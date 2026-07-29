@@ -2,3 +2,11 @@
 .env
 dist/
 build/
+
+# Python / backend
+backend/.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
