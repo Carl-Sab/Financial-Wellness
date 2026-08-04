@@ -1,34 +1,42 @@
 import enum
 
 
-class ConsentFeature(enum.StrEnum):
-    BIOMETRIC_COLLECTION = "biometric_collection"
-    NOTIFICATIONS = "notifications"
+class Level3(enum.StrEnum):
+    LOW = "low"
+    MID = "mid"
+    HIGH = "high"
 
 
-class BiometricQualityFlag(enum.StrEnum):
-    OK = "ok"
-    MOTION_ARTIFACT = "motion_artifact"
-    POOR_CONTACT = "poor_contact"
-    OFF_BODY = "off_body"
+class ValenceLevel(enum.StrEnum):
+    VERY_UNPLEASANT = "very_unpleasant"
+    UNPLEASANT = "unpleasant"
+    NEUTRAL = "neutral"
+    PLEASANT = "pleasant"
+    VERY_PLEASANT = "very_pleasant"
 
 
 class ArousalLabel(enum.StrEnum):
     CALM = "calm"
     ELEVATED = "elevated"
     HIGH = "high"
+    UNKNOWN = "unknown"
 
 
-class NotificationStatus(enum.StrEnum):
+class OutboxStatus(enum.StrEnum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
     SUPPRESSED = "suppressed"
 
 
-class NotificationFeedbackEvent(enum.StrEnum):
+class FeedbackEvent(enum.StrEnum):
     DELIVERED = "delivered"
     OPENED = "opened"
     DISMISSED = "dismissed"
     MARKED_HELPFUL = "marked_helpful"
     MARKED_NOT_NOW = "marked_not_now"
+
+
+class LedgerDirection(enum.StrEnum):
+    CREDIT = "credit"
+    DEBIT = "debit"

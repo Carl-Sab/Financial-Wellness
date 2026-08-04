@@ -9,6 +9,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30",
     "alembic>=1.14",
+    "pydantic>=2.6",
     "pydantic-settings>=2.6",
     "structlog>=24.4",
 ]
@@ -32,6 +33,13 @@ packages = ["src/wellness"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# wellness.db builds one AsyncEngine (and its asyncpg connection pool) at
+# import time, shared for the whole process. asyncpg connections are bound
+# to the event loop that created them, so every test must run on the same
+# loop — the default per-test loop would otherwise reuse pooled connections
+# across closed loops and fail with "Event loop is closed".
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 
 [tool.ruff]
@@ -49,6 +57,12 @@ select = [
     "SIM",           # simplify
     "RUF",           # ruff-specific
 ]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom requires Depends()/Query() as literal
+# argument defaults; they're evaluated once at route-registration time, not
+# per-request, so B008's "don't call functions in defaults" doesn't apply.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
 
 [tool.mypy]
 python_version = "3.12"
