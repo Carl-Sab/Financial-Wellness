@@ -1,0 +1,26 @@
+from fastapi import APIRouter
+
+from wellness.api.v1 import (
+    arousal_state,
+    bank_accounts,
+    bank_ledger,
+    categories,
+    checkins,
+    goals,
+    questionnaire_responses,
+    transactions,
+    user_baseline,
+    users,
+)
+
+router = APIRouter(prefix="/api/v1")
+router.include_router(users.router)
+router.include_router(questionnaire_responses.router)
+router.include_router(checkins.router)
+router.include_router(transactions.router)
+router.include_router(goals.router)
+router.include_router(bank_accounts.router)
+router.include_router(bank_ledger.router)
+router.include_router(categories.router)
+router.include_router(user_baseline.router)
+router.include_router(arousal_state.router)

@@ -1,83 +1,94 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
+    REAL,
+    BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
-    SmallInteger,
-    String,
+    Text,
+    desc,
     func,
+    text,
 )
-from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from wellness.models.base import Base, new_uuid
-from wellness.models.enums import ConsentFeature
+from wellness.models.base import Base
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
-    # IANA tz name (e.g. "America/Denver"), used for display and for future quiet-hours logic.
-    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    full_name: Mapped[str] = mapped_column(Text, nullable=False)
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
+    phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(Text, nullable=True)
+    country: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timezone: Mapped[str] = mapped_column(
+        Text, nullable=False, default="Asia/Beirut", server_default="Asia/Beirut"
+    )
+    currency: Mapped[str] = mapped_column(Text, nullable=False, default="LBP", server_default="LBP")
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    # Age is derived, never stored - it would go stale:
+    #   SELECT date_part('year', age(date_of_birth)) FROM users;
 
 
-class UserConsent(Base):
-    """Append-only per-feature consent log.
+class QuestionnaireResponse(Base):
+    """Signup questionnaire: four trait-framed scales, administered once.
 
-    Rows are never updated. A grant event sets granted_at and leaves revoked_at
-    null; a revoke event sets revoked_at and leaves granted_at null. The current
-    consent state for a (user_id, feature) pair is whichever row has the highest
-    id (i.e. the most recently inserted). Biometric collection and notifications
-    are tracked as separate features so one can be revoked without the other.
+    Raw item responses are kept alongside the computed scores so the scores
+    can be recomputed or checked for reliability later.
     """
 
-    __tablename__ = "user_consent"
+    __tablename__ = "questionnaire_responses"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    feature: Mapped[ConsentFeature] = mapped_column(
-        SAEnum(ConsentFeature, name="consent_feature", native_enum=True), nullable=False
+
+    # Rook & Fisher (1995), 9 items, 1-5
+    impulse_tendency_score: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    # Tangney et al. (2004), 13 items, 1-5
+    self_control_score: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    # Babin et al. (1994) adapted to trait framing, 11 items, 1-7
+    hedonic_score: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    # Babin et al. (1994) adapted to trait framing, 4 items, 1-7
+    utilitarian_score: Mapped[float | None] = mapped_column(REAL, nullable=True)
+
+    raw_responses: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    instrument_version: Mapped[str] = mapped_column(
+        Text, nullable=False, default="v1", server_default="v1"
     )
-    granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+    completed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     __table_args__ = (
-        Index("ix_user_consent_user_feature_id", "user_id", "feature", "id"),
         CheckConstraint(
-            "(granted_at IS NOT NULL) <> (revoked_at IS NOT NULL)",
-            name="exactly_one_of_granted_or_revoked",
+            "impulse_tendency_score BETWEEN 1 AND 5", name="impulse_tendency_score_range"
         ),
-    )
-
-
-class UserProfile(Base):
-    """Slowly-changing demographic attributes, updated in place (not versioned)."""
-
-    __tablename__ = "user_profile"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
-    )
-    age: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
-    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    occupation: Mapped[str | None] = mapped_column(String(160), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        CheckConstraint("self_control_score BETWEEN 1 AND 5", name="self_control_score_range"),
+        CheckConstraint("hedonic_score BETWEEN 1 AND 7", name="hedonic_score_range"),
+        CheckConstraint("utilitarian_score BETWEEN 1 AND 7", name="utilitarian_score_range"),
+        Index("ix_questionnaire_responses_user_id_completed_at", "user_id", desc("completed_at")),
     )
