@@ -956,8 +956,12 @@ dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "fastapi" },
+<<<<<<< HEAD
     { name = "matplotlib" },
     { name = "pandas" },
+=======
+    { name = "pydantic" },
+>>>>>>> 4e845483b7447e265b8dfeed9b95423fba1043d6
     { name = "pydantic-settings" },
     { name = "scipy" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -980,8 +984,12 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.14" },
     { name = "asyncpg", specifier = ">=0.30" },
     { name = "fastapi", specifier = ">=0.115" },
+<<<<<<< HEAD
     { name = "matplotlib", specifier = ">=3.11.1" },
     { name = "pandas", specifier = ">=3.0.5" },
+=======
+    { name = "pydantic", specifier = ">=2.6" },
+>>>>>>> 4e845483b7447e265b8dfeed9b95423fba1043d6
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "scipy", specifier = ">=1.18.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
