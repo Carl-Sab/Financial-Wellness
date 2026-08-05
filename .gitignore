@@ -2,6 +2,7 @@
 .env
 dist/
 build/
+ForMichel.md
 
 # Python / backend
 backend/.venv/
