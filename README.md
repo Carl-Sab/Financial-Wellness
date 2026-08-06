@@ -1,6 +1,6 @@
 # Financial Wellness
 
-> Feel what your spending does to you — before it happens.
+> Feel what your spending does to you before it happens.
 
 A spending insight app built around a simple loop: before a purchase, the
 user logs a quick physiological check-in (heart rate, HRV, EDA, SpO2, skin
@@ -9,10 +9,51 @@ temp — whatever their wearable/device gives them) and how they're feeling
 own baseline, and — when elevated arousal or excess spending shows a real
 pattern — the app can nudge them before an impulse becomes a transaction.
 
+## Running the app
+
+Everything below happens in `backend/` unless noted. You need Docker and
+[`uv`](https://docs.astral.sh/uv/) installed.
+
+**1. One-time setup:**
+```
+cd backend
+docker compose up -d              # starts Postgres
+uv sync                           # installs dependencies
+cp .env.example .env              # copy env file (defaults already match docker-compose)
+uv run alembic upgrade head       # creates all the tables
+uv run python scripts/seed_test_data.py   # optional: fake data so there's something to see
+```
+The seed script prints a user ID at the end (e.g.
+`6bb71316-7dc5-486d-bcfa-882bb814f8e5`) — copy it, you'll need it in step 3.
+`API_KEY_SECRET_FROM_EURISKO` in `.env` is only needed if you want the AI
+report (see below) — everything else works without it.
+
+**2. Start the API** (leave this running in its own terminal):
+```
+uv run uvicorn wellness.main:app --reload --port 8000
+```
+Confirm it's up at `http://localhost:8000/docs`.
+
+**3. Start the frontend** (a *second* terminal):
+```
+cd frontend
+python -m http.server 5500
+```
+Open `http://localhost:5500` in your browser. Paste the user ID from step 1
+into the "User ID" box (or leave it blank to include every user), optionally
+check "Include AI report," and click **Run Analysis**. You should see a
+correlation table and two plots appear.
+
+That's the whole app right now — a correlation viewer. There's no
+login/register UI yet (see "Current status" below for what's not built).
+
 ## How it's put together
 
-Backend: **FastAPI** + **SQLAlchemy (async)** + **PostgreSQL**, managed with
-`uv`. Full schema in [`backend/schema.sql`](backend/schema.sql).
+Backend: **FastAPI** + **SQLAlchemy (async)** + **PostgreSQL** + **Alembic**,
+managed with `uv`. `backend/schema.sql` is a human-readable reference copy of
+the schema — **Alembic migrations (`backend/alembic/versions/`) are the real
+source of truth**; always set the DB up via `alembic upgrade head`, not by
+applying `schema.sql` directly, or you'll drift out of sync with the models.
 
 The data model is split into two domains, kept deliberately separate:
 
@@ -41,15 +82,25 @@ downstream of both domains via plain FK columns, no ORM relationship import)
 and `models/users.py` (accounts + the one-time signup questionnaire scoring
 impulse tendency, self-control, hedonic/utilitarian shopping traits).
 
-The frontend is currently a single standalone landing/marketing page,
-[`FinancialWellnessLanding.jsx`](FinancialWellnessLanding.jsx), at the repo
-root — not yet wired into a build.
+## API
 
-## Mood/arousal vs. spending analysis
+`backend/src/wellness/api/v1/` has CRUD routers for every table (users,
+checkins, transactions, arousal-state (read-only), goals, bank accounts/
+ledger, categories, user baseline, questionnaire responses) plus one
+analysis endpoint. **All of it is smoke-test only — no auth** (see the
+warning comment at the top of each router file); don't expose this beyond
+local dev as-is. Run command is in "Running the app" above; interactive
+docs at `http://localhost:8000/docs` once it's up.
 
-[`backend/scripts/mood_spend_correlation.py`](backend/scripts/mood_spend_correlation.py)
-answers: does how someone feels at the moment of a purchase relate to how
-much *more* than usual they spend?
+### Mood/arousal vs. excess-spend correlation
+
+`GET /api/v1/analysis/mood-spend-correlation?user_id=<uuid>&include_ai_report=true`
+
+Answers: does how someone feels at the moment of a purchase relate to how
+much *more* than usual they spend? The core logic lives in
+[`wellness/analysis/mood_spend.py`](backend/src/wellness/analysis/mood_spend.py)
+and is shared between this endpoint and the CLI script below, so they can't
+drift apart.
 
 - Only looks at transactions with a linked checkin (`transactions.checkin_id`)
   — that's what carries the mood data.
@@ -62,69 +113,64 @@ much *more* than usual they spend?
   transaction amount in the same category — the same "relative to your own
   baseline" logic the app already uses for arousal itself, applied to spend.
 
-It produces two plots (a scatter+trendline per axis, and a bar chart ranking
-correlation strength) and, unless `--skip-ai-report` is passed, feeds the
-exact correlation numbers plus those plot images to Claude (via the same
-Pydantic AI Gateway key used in the game-store project) to get back a
-written report — [`ai_report.py`](backend/scripts/ai_report.py) has the
-prompt.
+Returns the correlation table, the two plots as base64 PNGs, and — if
+`include_ai_report=true` and `API_KEY_SECRET_FROM_EURISKO` is set — a
+written report from Claude (via the same Pydantic AI Gateway key used in the
+game-store project;
+[`wellness/analysis/report.py`](backend/src/wellness/analysis/report.py)
+has the prompt).
 
+There's also a CLI version for terminal use:
 ```
 uv run python scripts/mood_spend_correlation.py [--user-id UUID] [--skip-ai-report]
 ```
-
 Plots and the AI report land in `scripts/output/`.
+
+## Frontend
+
+[`frontend/`](frontend/) is a plain HTML/CSS/JS page (no build step) that
+calls the correlation endpoint above and renders the results: a table, the
+two plots, and the AI report (if requested) as rendered markdown. Run
+command is in "Running the app" above. It expects the API on
+`http://localhost:8000` — change `API_BASE_URL` in `frontend/js/app.js` if
+you're running it on a different port.
+
+There's also a separate standalone landing/marketing page,
+[`FinancialWellnessLanding.jsx`](FinancialWellnessLanding.jsx), at the repo
+root — not wired into `frontend/`.
 
 ## Current status
 
-- ✅ Full SQLAlchemy schema matching `schema.sql`, with an explicit
-  constraint naming convention (`models/base.py`)
-- ✅ Async DB session factory (`db.py`) + pydantic-settings config
-  (`config.py`)
-- ✅ `docker-compose.yml` for Postgres
-- ✅ `scripts/mood_spend_correlation.py` + `scripts/ai_report.py` — mood vs.
-  excess-spend correlation, plots, and an AI-written report
-- ⬜ No FastAPI routes or app entrypoint yet
-- ⬜ No Alembic migrations generated yet (schema is applied via `schema.sql`
-  directly for now)
-- ⬜ No tests yet (tooling is already in place: pytest, pytest-asyncio,
-  testcontainers)
-
-## Getting started
-
-1. Start Postgres:
-   ```
-   cd backend
-   docker compose up -d
-   ```
-   `init.sql` only enables the `pgcrypto` extension — the actual tables
-   aren't created automatically yet, so apply the schema once:
-   ```
-   docker compose exec -T db psql -U wellness -d wellness < schema.sql
-   ```
-2. Copy the env file and adjust if needed:
-   ```
-   cp .env.example .env
-   ```
-   `API_KEY_SECRET_FROM_EURISKO` is only needed for the AI report step of
-   the correlation script — everything else works without it.
-3. Install dependencies:
-   ```
-   uv sync
-   ```
-4. Run the mood/spend correlation analysis:
-   ```
-   uv run python scripts/mood_spend_correlation.py
-   ```
+- ✅ Full SQLAlchemy schema + matching Alembic migrations
+  (`alembic/versions/0001`, `0002`)
+- ✅ FastAPI app (`wellness/main.py`) with CRUD routers for every table —
+  **smoke-test only, no auth yet**
+- ✅ `GET /api/v1/analysis/mood-spend-correlation` + a plain HTML/JS frontend
+  for it (`frontend/`)
+- ✅ `scripts/mood_spend_correlation.py` — CLI version of the same analysis
+- ⬜ No real authentication/authorization
+- ⬜ No arousal-scoring service yet (creating a checkin does *not* trigger
+  baseline recomputation or arousal scoring — that's still manual/TODO)
+- ✅ Tests exist for several routers (`backend/tests/`) — `uv run pytest`
 
 ## Project structure
 
 ```
 backend/
   src/wellness/
-    config.py            # pydantic-settings
-    db.py                 # async SQLAlchemy engine/session factory
+    main.py               # FastAPI app entrypoint
+    config.py              # pydantic-settings
+    db.py                  # async SQLAlchemy engine/session factory
+    security.py             # password hashing (smoke-test grade, see TODO in file)
     logging.py
+    api/
+      deps.py               # pagination, etc.
+      errors.py             # commit_or_409, not_found
+      v1/                   # one router per table + analysis.py
+    schemas/                # Pydantic request/response models, one file per table
+    analysis/
+      mood_spend.py          # mood/arousal vs. excess-spend correlation (shared core)
+      report.py               # AI write-up of the correlation results
     models/
       base.py             # declarative Base + naming convention
       enums.py            # ValenceLevel, ArousalLabel, Level3, ...
@@ -138,14 +184,20 @@ backend/
       banking.py            # BankAccount, BankLedger
       goals.py               # UserGoal
       notifications.py       # UserSettings, NotificationOutbox, NotificationFeedback
+  alembic/versions/       # source of truth for the DB schema
   scripts/
-    mood_spend_correlation.py  # mood/arousal vs. excess-spend correlation + plots
-    ai_report.py                 # AI write-up of the correlation results
-  schema.sql                # source of truth for the Postgres schema
+    mood_spend_correlation.py  # CLI: mood/arousal vs. excess-spend correlation + plots
+    seed_test_data.py           # synthetic demo data for the above
+  tests/
+  schema.sql                # human-readable reference copy — NOT applied directly, see above
   docker-compose.yml       # Postgres
   init.sql
   .env.example
-FinancialWellnessLanding.jsx  # marketing/landing page (React)
+frontend/
+  index.html               # correlation results viewer
+  js/app.js
+  css/style.css
+FinancialWellnessLanding.jsx  # marketing/landing page (React), unrelated to frontend/
 ```
 
 ## Dev tooling
