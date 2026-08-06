@@ -107,6 +107,7 @@ CREATE TABLE checkins (
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category_code       TEXT NOT NULL REFERENCES categories(code),
     valence             valence_level NOT NULL,
+    checkin_type        TEXT NOT NULL DEFAULT 'pre_transaction',  -- 'pre_transaction' | 'standalone'
 
     -- manually entered physiological readings
     heart_rate          REAL CHECK (heart_rate BETWEEN 30 AND 220),

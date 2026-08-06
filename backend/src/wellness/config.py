@@ -1,10 +1,16 @@
 from functools import lru_cache
+from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Absolute path so `.env` loads regardless of the process's working directory
+# (e.g. running scripts/ from a different cwd than the FastAPI app).
+ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     environment: str = "local"
     log_level: str = "INFO"
@@ -17,6 +23,13 @@ class Settings(BaseSettings):
     database_url: str = ""
 
     redis_url: str = "redis://localhost:6379/0"
+
+    # Optional: only needed for scripts/mood_spend_correlation.py's AI report
+    # step. Left optional (rather than required) so importing wellness.db —
+    # which builds the engine at module load time — doesn't fail for every
+    # other use of this app just because this one key isn't set yet.
+    gateway_api_key: str | None = Field(default=None, validation_alias="API_KEY_SECRET_FROM_EURISKO")
+    report_model: str = "claude-sonnet-5"
 
     def sqlalchemy_database_url(self) -> str:
         if self.database_url:
