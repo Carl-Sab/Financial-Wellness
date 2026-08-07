@@ -5,7 +5,8 @@
 # always recomputes it by summing transactions for the goal's period. See
 # the boundary comment in wellness.models.goals.
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func as sa_func
@@ -15,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from wellness.api.deps import PageParams, page_params
 from wellness.api.errors import commit_or_409, not_found
 from wellness.db import get_session
-from wellness.models import Transaction, UserGoal
+from wellness.models import Transaction, User, UserGoal
 from wellness.schemas.goals import GoalProgress, UserGoalCreate, UserGoalRead, UserGoalUpdate
 
 router = APIRouter(prefix="/goals", tags=["user_goals"])
@@ -93,6 +94,21 @@ def _current_period(goal: UserGoal, today: date) -> tuple[date, date]:
     return period_start, period_end
 
 
+def _daily_window(user_timezone: str) -> tuple[date, datetime, datetime]:
+    """Midnight through now, in the user's own timezone — not the whole
+    calendar day, since 'now' partway through the day is the actual upper
+    bound for a daily goal's progress. Falls back to UTC if the stored
+    timezone name isn't a valid IANA zone.
+    """
+    try:
+        tz = ZoneInfo(user_timezone)
+    except ZoneInfoNotFoundError:
+        tz = ZoneInfo("UTC")
+    now_local = datetime.now(tz)
+    midnight_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    return now_local.date(), midnight_local.astimezone(UTC), now_local.astimezone(UTC)
+
+
 @router.get("/{goal_id}/progress", response_model=GoalProgress)
 async def get_goal_progress(
     goal_id: int, session: AsyncSession = Depends(get_session)
@@ -101,12 +117,23 @@ async def get_goal_progress(
     if goal is None:
         raise not_found("user_goal")
 
-    period_start, period_end = _current_period(goal, date.today())
+    window_start: date | datetime
+    window_end: date | datetime
+
+    if goal.period == "daily":
+        user = await session.get(User, goal.user_id)
+        user_timezone = user.timezone if user is not None else "UTC"
+        period_start, window_start, window_end = _daily_window(user_timezone)
+        period_end = period_start
+    else:
+        period_start, period_end = _current_period(goal, date.today())
+        window_start = period_start
+        window_end = period_end + timedelta(days=1)
 
     query = select(sa_func.coalesce(sa_func.sum(Transaction.amount), 0)).where(
         Transaction.user_id == goal.user_id,
-        Transaction.occurred_at >= period_start,
-        Transaction.occurred_at < period_end + timedelta(days=1),
+        Transaction.occurred_at >= window_start,
+        Transaction.occurred_at < window_end,
     )
     if goal.category_code is not None:
         query = query.where(Transaction.category_code == goal.category_code)

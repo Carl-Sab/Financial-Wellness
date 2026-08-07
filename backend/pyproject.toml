@@ -12,6 +12,10 @@ dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.6",
     "structlog>=24.4",
+    # zoneinfo has no bundled IANA database and Windows has no OS-level one
+    # to fall back on (unlike Linux/macOS) — without this, ZoneInfo(...)
+    # raises ZoneInfoNotFoundError for every zone, including "UTC".
+    "tzdata>=2024.1",
 ]
 
 [dependency-groups]

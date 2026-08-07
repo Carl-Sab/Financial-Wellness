@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from wellness.api.v1 import (
+    analysis,
     arousal_state,
     bank_accounts,
     bank_ledger,
@@ -24,3 +25,4 @@ router.include_router(bank_ledger.router)
 router.include_router(categories.router)
 router.include_router(user_baseline.router)
 router.include_router(arousal_state.router)
+router.include_router(analysis.router)

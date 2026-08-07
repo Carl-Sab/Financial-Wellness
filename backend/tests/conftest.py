@@ -16,7 +16,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import pytest_asyncio
@@ -24,6 +24,9 @@ from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from testcontainers.community.postgres import PostgresContainer
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
@@ -77,6 +80,18 @@ async def user_id(client: AsyncClient, unique: Callable[[str], str]) -> str:
     assert resp.status_code == 201
     created_id: str = resp.json()["id"]
     return created_id
+
+
+@pytest_asyncio.fixture
+async def db_session() -> AsyncIterator["AsyncSession"]:
+    """Direct DB access for the handful of things the API has no CRUD for
+    (financial_profile has no router — it was out of scope for the CRUD
+    task — but the budget-fallback tests need to create one).
+    """
+    from wellness.db import get_session
+
+    async for session in get_session():
+        yield session
 
 
 @pytest_asyncio.fixture
