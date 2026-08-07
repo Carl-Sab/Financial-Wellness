@@ -14,6 +14,7 @@ AROUSAL_MODULES = {
     "wellness.models.checkins",
     "wellness.models.baseline",
     "wellness.models.arousal",
+    "wellness.models.biometric_samples",
     "wellness.services.baseline",
     "wellness.services.arousal",
 }
@@ -29,6 +30,7 @@ _MODULE_PATH = {
     "wellness.models.checkins": _SRC / "wellness/models/checkins.py",
     "wellness.models.baseline": _SRC / "wellness/models/baseline.py",
     "wellness.models.arousal": _SRC / "wellness/models/arousal.py",
+    "wellness.models.biometric_samples": _SRC / "wellness/models/biometric_samples.py",
     "wellness.services.baseline": _SRC / "wellness/services/baseline.py",
     "wellness.services.arousal": _SRC / "wellness/services/arousal.py",
     "wellness.models.transactions": _SRC / "wellness/models/transactions.py",
