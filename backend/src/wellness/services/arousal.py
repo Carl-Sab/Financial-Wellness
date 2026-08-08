@@ -7,6 +7,7 @@ computed from physiology alone; spending data plays no role.
 """
 
 import math
+from datetime import timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from wellness.models.arousal import ArousalState
 from wellness.models.baseline import UserBaseline
+from wellness.models.biometric_samples import BiometricSample
 from wellness.models.checkins import Checkin
 from wellness.models.enums import ArousalLabel
 
@@ -29,9 +31,67 @@ _METRIC_SPEC: dict[str, tuple[str, int]] = {
     "spo2_percent": ("z_spo2", -1),
 }
 
+# Metrics biometric_samples can supply a window reading for. eda_microsiemens
+# and skin_temp_c have no wearable equivalent and always come from the
+# typed check-in value.
+_SAMPLE_METRICS = ("heart_rate", "hrv_ms", "spo2_percent")
+
+WINDOW_BEFORE_CHECKIN = timedelta(minutes=15)
+MIN_WINDOW_SAMPLES = 3
+
 
 class CheckinNotFoundError(LookupError):
     pass
+
+
+async def _resolve_reading(
+    session: AsyncSession, checkin: Checkin, metric: str
+) -> tuple[float | None, str, int]:
+    """The reading to score for `metric`: the average of biometric_samples in
+    the 15 minutes before the check-in when at least MIN_WINDOW_SAMPLES exist
+    there, otherwise the value typed into the check-in itself. Returns
+    (reading, source, samples_in_window) where source is 'samples' or
+    'checkins' and samples_in_window is only meaningful when source is
+    'samples'.
+    """
+    typed_value: float | None = getattr(checkin, metric)
+    if metric not in _SAMPLE_METRICS:
+        return typed_value, "checkins", 0
+
+    sample_column = getattr(BiometricSample, metric)
+    avg_value, sample_count = (
+        await session.execute(
+            select(func.avg(sample_column), func.count(sample_column)).where(
+                BiometricSample.user_id == checkin.user_id,
+                sample_column.is_not(None),
+                BiometricSample.ts.between(
+                    checkin.entered_at - WINDOW_BEFORE_CHECKIN, checkin.entered_at
+                ),
+            )
+        )
+    ).one()
+
+    if sample_count >= MIN_WINDOW_SAMPLES:
+        return avg_value, "samples", sample_count
+    return typed_value, "checkins", 0
+
+
+def _baseline_factor(baseline: UserBaseline) -> float:
+    """How reliable a baseline is, 0-1. Baselines built from wearable
+    samples are trusted at lower n than checkin-built ones since a sample
+    is passively collected rather than typed in.
+    """
+    if baseline.source == "samples":
+        if baseline.sample_n >= 100:
+            return 1.0
+        if baseline.sample_n >= 30:
+            return 0.75
+        return 0.0
+    if baseline.sample_n < 8:
+        return 0.0
+    if baseline.sample_n < 20:
+        return 0.5
+    return 1.0
 
 
 async def score_checkin(session: AsyncSession, checkin_id: int) -> ArousalState:
@@ -46,36 +106,38 @@ async def score_checkin(session: AsyncSession, checkin_id: int) -> ArousalState:
 
     z_scores: dict[str, float] = {}
     signed_terms: list[float] = []
-    sample_ns_used: list[int] = []
+    baseline_factors_used: list[float] = []
+    window_sample_count = 0
+    any_sample_sourced = False
 
     for metric, (z_field, sign) in _METRIC_SPEC.items():
-        reading = getattr(checkin, metric)
         baseline = baselines.get(metric)
-        if reading is None or baseline is None:
+        if baseline is None:
             continue
         if baseline.sd_value is None or baseline.sd_value == 0:
+            continue
+
+        reading, metric_source, samples_in_window = await _resolve_reading(
+            session, checkin, metric
+        )
+        if reading is None:
             continue
 
         z = (reading - baseline.mean_value) / baseline.sd_value
         z_scores[z_field] = z
         signed_terms.append(sign * z)
-        sample_ns_used.append(baseline.sample_n)
+        baseline_factors_used.append(_baseline_factor(baseline))
+
+        if metric_source == "samples":
+            any_sample_sourced = True
+            window_sample_count += samples_in_window
 
     metrics_used = len(signed_terms)
     score = 1 / (1 + math.exp(-(sum(signed_terms) / metrics_used))) if metrics_used else None
 
-    if sample_ns_used:
-        min_sample_n = min(sample_ns_used)
-        if min_sample_n < 8:
-            baseline_factor = 0.0
-        elif min_sample_n < 20:
-            baseline_factor = 0.5
-        else:
-            baseline_factor = 1.0
-    else:
-        baseline_factor = 0.0
-
+    baseline_factor = min(baseline_factors_used) if baseline_factors_used else 0.0
     confidence = max(0.0, min(1.0, 0.2 * metrics_used * baseline_factor))
+    reading_source = "samples" if any_sample_sourced else "checkins"
 
     if baseline_factor == 0.0 or metrics_used == 0:
         label = ArousalLabel.UNKNOWN
@@ -98,6 +160,8 @@ async def score_checkin(session: AsyncSession, checkin_id: int) -> ArousalState:
         "label": label,
         "confidence": confidence,
         "metrics_used": metrics_used,
+        "window_sample_count": window_sample_count,
+        "reading_source": reading_source,
         "model_version": MODEL_VERSION,
     }
 
@@ -114,6 +178,8 @@ async def score_checkin(session: AsyncSession, checkin_id: int) -> ArousalState:
             "label": stmt.excluded.label,
             "confidence": stmt.excluded.confidence,
             "metrics_used": stmt.excluded.metrics_used,
+            "window_sample_count": stmt.excluded.window_sample_count,
+            "reading_source": stmt.excluded.reading_source,
             "model_version": stmt.excluded.model_version,
             "computed_at": func.now(),
         },

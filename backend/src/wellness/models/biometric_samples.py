@@ -6,9 +6,11 @@ see the boundary comment at the top of wellness.models.transactions.
 
 Distinct from checkins: a checkin is a single manually-entered reading tied to
 a spending decision; a biometric sample is background wearable data, ingested
-in bulk on its own schedule, with no transaction context. The two tables are
-independent for now — this migration only adds ingestion and read endpoints,
-it does not feed samples into refresh_baseline()/score_checkin().
+in bulk on its own schedule, with no transaction context. refresh_baseline()
+prefers samples over checkins once a user has at least 30 samples for a
+metric, and score_checkin() prefers the 15-minute-window sample average over
+the typed check-in value when the window has at least 3 samples — see
+wellness.services.baseline and wellness.services.arousal.
 """
 
 import uuid

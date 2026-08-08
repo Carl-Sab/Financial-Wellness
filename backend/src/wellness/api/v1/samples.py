@@ -139,15 +139,15 @@ async def get_sample_averages(
 
 @router.get("", response_model=list[SampleRead])
 async def list_samples(
+    user_id: uuid.UUID | None = None,
     pagination: PageParams = Depends(page_params),
     session: AsyncSession = Depends(get_session),
 ) -> list[BiometricSample]:
-    result = await session.execute(
-        select(BiometricSample)
-        .order_by(BiometricSample.ts.desc())
-        .limit(pagination.limit)
-        .offset(pagination.offset)
-    )
+    query = select(BiometricSample).order_by(BiometricSample.ts.desc())
+    if user_id is not None:
+        query = query.where(BiometricSample.user_id == user_id)
+    query = query.limit(pagination.limit).offset(pagination.offset)
+    result = await session.execute(query)
     return list(result.scalars().all())
 
 

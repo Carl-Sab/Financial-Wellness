@@ -37,7 +37,7 @@ async def test_duplicate_sample_is_silently_ignored_not_409(
     assert second.json()["id"] == first_id
     assert second.json()["heart_rate"] == 65.0
 
-    list_resp = await client.get("/api/v1/samples", params={"limit": 200})
+    list_resp = await client.get("/api/v1/samples", params={"user_id": user_id, "limit": 200})
     matching = [s for s in list_resp.json() if s["id"] == first_id]
     assert len(matching) == 1
 

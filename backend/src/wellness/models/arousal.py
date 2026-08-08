@@ -65,6 +65,16 @@ class ArousalState(Base):
     )
     confidence: Mapped[float | None] = mapped_column(REAL, nullable=True)
     metrics_used: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Total biometric_samples rows behind the metrics that were window-sourced
+    # (0 when none were — every reading came from the typed check-in).
+    window_sample_count: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=0, server_default="0"
+    )
+    # 'samples' if at least one metric's reading came from the biometric_samples
+    # 15-minute window average, 'checkins' if every reading was typed in.
+    reading_source: Mapped[str] = mapped_column(
+        Text, nullable=False, default="checkins", server_default="checkins"
+    )
     model_version: Mapped[str] = mapped_column(Text, nullable=False)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
