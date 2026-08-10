@@ -1,0 +1,10 @@
+.venv/
+.git/
+.gitignore
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+README.md
+pyproject.toml
+uv.lock
+compose.yaml
