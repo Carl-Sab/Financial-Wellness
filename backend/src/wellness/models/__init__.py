@@ -12,6 +12,7 @@ from wellness.models.arousal import ArousalState
 from wellness.models.banking import BankAccount, BankLedger
 from wellness.models.base import Base
 from wellness.models.baseline import UserBaseline
+from wellness.models.biometric_samples import BiometricSample
 from wellness.models.categories import Category
 from wellness.models.checkins import Checkin
 from wellness.models.financial import FinancialProfile
@@ -25,6 +26,7 @@ __all__ = [
     "BankAccount",
     "BankLedger",
     "Base",
+    "BiometricSample",
     "Category",
     "Checkin",
     "FinancialProfile",

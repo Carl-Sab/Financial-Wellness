@@ -11,6 +11,12 @@ own mean is 71 with an sd of 6.
 
 sample_n matters: with fewer than about 8 check-ins the standard deviation is
 unstable and should not be used for scoring.
+
+source records where mean_value/sd_value/sample_n/min_value/max_value came
+from: 'samples' when computed from biometric_samples (wearable data — used
+once a user has at least 30 samples for a metric), 'checkins' otherwise.
+eda_microsiemens and skin_temp_c have no sample source and are always
+'checkins'. See wellness.services.baseline.refresh_baseline.
 """
 
 import uuid
@@ -36,6 +42,10 @@ class UserBaseline(Base):
     sample_n: Mapped[int] = mapped_column(Integer, nullable=False)
     min_value: Mapped[float | None] = mapped_column(REAL, nullable=True)
     max_value: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    # 'samples' | 'checkins'
+    source: Mapped[str] = mapped_column(
+        Text, nullable=False, default="checkins", server_default="checkins"
+    )
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

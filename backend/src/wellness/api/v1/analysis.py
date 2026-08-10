@@ -1,19 +1,27 @@
-# Smoke-test endpoint only — no auth, matches the rest of api/v1/.
+# Smoke-test endpoints only — no auth. TODO: add real authentication before
+# this is exposed beyond local smoke testing.
 
 import base64
 import math
 import uuid
+from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wellness.analysis.mood_spend import compute_correlations, compute_derived_columns, load_data, plot_results
 from wellness.analysis.report import generate_report
 from wellness.config import get_settings
 from wellness.db import get_session
-from wellness.schemas.analysis import MoodSpendCorrelationItem, MoodSpendCorrelationResponse
+from wellness.schemas.analysis import (
+    MoodSpendCorrelationItem,
+    MoodSpendCorrelationResponse,
+    MoodSpendingResponse,
+)
+from wellness.services.analysis import get_mood_spending_analysis
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -30,6 +38,9 @@ async def get_mood_spend_correlation(
     ),
     session: AsyncSession = Depends(get_session),
 ) -> MoodSpendCorrelationResponse:
+    """Pearson correlation between excess spend and mood/arousal, across all
+    linked-checkin transactions. See wellness/analysis/mood_spend.py.
+    """
     raw_df = await load_data(session, user_id)
     if raw_df.empty:
         return MoodSpendCorrelationResponse(transaction_count=0, correlations=[])
@@ -59,3 +70,19 @@ async def get_mood_spend_correlation(
         bar_chart_png_base64=bar_b64,
         ai_report_markdown=ai_report,
     )
+
+
+@router.get("/mood-spending", response_model=MoodSpendingResponse)
+async def get_mood_spending(
+    user_id: uuid.UUID,
+    from_date: date,
+    to_date: date,
+    granularity: Literal["week", "month"],
+    session: AsyncSession = Depends(get_session),
+) -> MoodSpendingResponse:
+    """Overspend rate per mood bucket (stressed/positive/negative/neutral),
+    broken into calendar week/month periods. See wellness/services/analysis.py.
+    """
+    if from_date > to_date:
+        raise HTTPException(status_code=422, detail="from_date must not be after to_date")
+    return await get_mood_spending_analysis(session, user_id, from_date, to_date, granularity)

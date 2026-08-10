@@ -9,6 +9,7 @@ from wellness.api.v1 import (
     checkins,
     goals,
     questionnaire_responses,
+    samples,
     transactions,
     user_baseline,
     users,
@@ -19,6 +20,7 @@ router.include_router(analysis.router)
 router.include_router(users.router)
 router.include_router(questionnaire_responses.router)
 router.include_router(checkins.router)
+router.include_router(samples.router)
 router.include_router(transactions.router)
 router.include_router(goals.router)
 router.include_router(bank_accounts.router)

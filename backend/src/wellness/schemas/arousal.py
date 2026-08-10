@@ -21,5 +21,7 @@ class ArousalStateRead(BaseModel):
     label: ArousalLabel
     confidence: float | None
     metrics_used: int
+    window_sample_count: int
+    reading_source: str
     model_version: str
     computed_at: datetime

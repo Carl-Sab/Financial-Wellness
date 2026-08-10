@@ -14,4 +14,5 @@ class UserBaselineRead(BaseModel):
     sample_n: int
     min_value: float | None
     max_value: float | None
+    source: str
     computed_at: datetime
