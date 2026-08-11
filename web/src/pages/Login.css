@@ -1,0 +1,16 @@
+/* Login reuses Signup.css for the shared two-column layout, lime panel,
+   ECG motif, and .field* input styling — this file is only for what's
+   specific to this page. */
+
+.login__signup-prompt {
+  margin-top: var(--space-5);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.login__signup-prompt a {
+  font-weight: 600;
+  color: var(--color-ink);
+  text-decoration: underline;
+}

@@ -11,41 +11,63 @@ pattern — the app can nudge them before an impulse becomes a transaction.
 
 ## Running the app
 
-Everything below happens in `backend/` unless noted. You need Docker and
-[`uv`](https://docs.astral.sh/uv/) installed.
+You need Docker, [`uv`](https://docs.astral.sh/uv/), and Node installed.
+There are two parts: the API (`backend/`) and the actual app (`web/`) — a
+React site with a landing page, sign up, and log in, all working end to end.
 
-**1. One-time setup:**
+### One-time setup
+
 ```
 cd backend
 docker compose up -d              # starts Postgres
-uv sync                           # installs dependencies
-cp .env.example .env              # copy env file (defaults already match docker-compose)
-uv run alembic upgrade head       # creates all the tables
-uv run python scripts/seed_test_data.py   # optional: fake data so there's something to see
+uv sync                           # installs backend dependencies
+cp .env.example .env
 ```
-The seed script prints a user ID at the end (e.g.
-`6bb71316-7dc5-486d-bcfa-882bb814f8e5`) — copy it, you'll need it in step 3.
-`API_KEY_SECRET_FROM_EURISKO` in `.env` is only needed if you want the AI
-report (see below) — everything else works without it.
+Then open `backend/.env` and set `JWT_SECRET` — the app **will not start**
+without it (no placeholder default is shipped, on purpose: see the comment
+in `.env.example`). Generate one and paste it in:
+```
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+`API_KEY_SECRET_FROM_EURISKO` in `.env` is only needed for the AI report
+feature (see below) — everything else works without it.
 
-**2. Start the API** (leave this running in its own terminal):
+```
+uv run alembic upgrade head       # creates all the tables
+cd ../web
+npm install                       # installs frontend dependencies
+```
+
+### Every time after that
+
+Three terminals, all left running:
+
+**1. Database** (`backend/`, if it's not already up):
+```
+docker compose up -d
+```
+
+**2. API** (`backend/`):
 ```
 uv run uvicorn wellness.main:app --reload --port 8000
 ```
 Confirm it's up at `http://localhost:8000/docs`.
 
-**3. Start the frontend** (a *second* terminal):
+**3. The app** (`web/`):
 ```
-cd frontend
-python -m http.server 5500
+npm run dev
 ```
-Open `http://localhost:5500` in your browser. Paste the user ID from step 1
-into the "User ID" box (or leave it blank to include every user), optionally
-check "Include AI report," and click **Run Analysis**. You should see a
-correlation table and two plots appear.
+Open `http://localhost:5173`. `web/vite.config.js` proxies `/api/*` to the
+backend automatically, so nothing else to configure. Register an account, or
+log in if you already have one — that's real now, not a placeholder.
 
-That's the whole app right now — a correlation viewer. There's no
-login/register UI yet (see "Current status" below for what's not built).
+Optional — seed a full realistic demo user (biometric samples, check-ins
+scored through the real arousal pipeline, transactions, a budget, a bank
+ledger) so there's something to look at beyond your own account:
+```
+cd backend
+uv run python scripts/seed_demo_data.py
+```
 
 ## How it's put together
 
@@ -87,10 +109,20 @@ impulse tendency, self-control, hedonic/utilitarian shopping traits).
 `backend/src/wellness/api/v1/` has CRUD routers for every table (users,
 checkins, transactions, arousal-state (read-only), goals, bank accounts/
 ledger, categories, user baseline, questionnaire responses) plus one
-analysis endpoint. **All of it is smoke-test only — no auth** (see the
-warning comment at the top of each router file); don't expose this beyond
-local dev as-is. Run command is in "Running the app" above; interactive
-docs at `http://localhost:8000/docs` once it's up.
+analysis endpoint. **All of that is still smoke-test only — no auth applied**
+(see the warning comment at the top of each router file); don't expose it
+beyond local dev as-is.
+
+The one router that *is* real: `auth.py` —
+`POST /api/v1/auth/{register,login,refresh,logout}` and `GET /api/v1/auth/me`.
+Access tokens are short-lived JWTs; refresh tokens are opaque, stored
+hashed, delivered as an httpOnly cookie, and rotated on every use (reuse of
+an already-used one revokes the whole session family — see
+`wellness/models/auth.py`). A `get_current_user` dependency exists for
+gating other routes the same way, just isn't used anywhere yet.
+
+Run command is in "Running the app" above; interactive docs at
+`http://localhost:8000/docs` once it's up.
 
 ### Mood/arousal vs. excess-spend correlation
 
@@ -128,45 +160,62 @@ Plots and the AI report land in `scripts/output/`.
 
 ## Frontend
 
-[`frontend/`](frontend/) is a plain HTML/CSS/JS page (no build step) that
-calls the correlation endpoint above and renders the results: a table, the
-two plots, and the AI report (if requested) as rendered markdown. Run
-command is in "Running the app" above. It expects the API on
-`http://localhost:8000` — change `API_BASE_URL` in `frontend/js/app.js` if
-you're running it on a different port.
+**[`web/`](web/)** is the real app — a Vite + React site: landing page, a
+two-step sign up, log in, and a working JWT session (in-memory access
+token, httpOnly-cookie refresh token that survives a page reload). Run
+command is in "Running the app" above.
 
-There's also a separate standalone landing/marketing page,
-[`FinancialWellnessLanding.jsx`](FinancialWellnessLanding.jsx), at the repo
-root — not wired into `frontend/`.
+`frontend/` is a separate, older tool — a plain HTML/JS page (no build
+step, no relation to `web/`) that calls the mood/spend correlation endpoint
+below and renders a table, two plots, and an AI report as markdown:
+```
+cd frontend
+python -m http.server 5500
+```
+Open `http://localhost:5500`. It needs a user ID — `uv run python
+scripts/seed_test_data.py` (in `backend/`, a narrower/older seed than
+`seed_demo_data.py` above) prints one you can paste in. Expects the API on
+`http://localhost:8000` — change `API_BASE_URL` in `frontend/js/app.js` if
+you're running it elsewhere.
 
 ## Current status
 
 - ✅ Full SQLAlchemy schema + matching Alembic migrations
-  (`alembic/versions/0001`, `0002`)
+  (`alembic/versions/0001`–`0006`)
 - ✅ FastAPI app (`wellness/main.py`) with CRUD routers for every table —
-  **smoke-test only, no auth yet**
-- ✅ `GET /api/v1/analysis/mood-spend-correlation` + a plain HTML/JS frontend
-  for it (`frontend/`)
+  still smoke-test only / no auth applied to them (see the warning comment
+  at the top of each router file)
+- ✅ Real JWT authentication: register, login, refresh-token rotation with
+  reuse detection, logout, rate-limited login, `GET /auth/me` — see
+  `wellness/api/v1/auth.py`. A `get_current_user` dependency exists
+  (`wellness/api/deps.py`) but isn't applied to any router yet.
+- ✅ `web/` — the real frontend: landing page, working sign up / log in
+  against the auth endpoints above
+- ✅ `GET /api/v1/analysis/mood-spend-correlation` + the older plain HTML/JS
+  viewer for it (`frontend/`)
 - ✅ `scripts/mood_spend_correlation.py` — CLI version of the same analysis
-- ⬜ No real authentication/authorization
-- ⬜ No arousal-scoring service yet (creating a checkin does *not* trigger
-  baseline recomputation or arousal scoring — that's still manual/TODO)
-- ✅ Tests exist for several routers (`backend/tests/`) — `uv run pytest`
+- ✅ Arousal-scoring is live: creating a checkin (`POST /api/v1/checkins`)
+  triggers baseline recomputation and arousal scoring for real, no manual
+  step needed
+- ⬜ No protected routes yet — nothing in the app actually requires being
+  logged in (the pieces exist, just not wired to anything)
+- ✅ Tests exist for every router plus the full auth flow
+  (`backend/tests/`) — `uv run pytest`
 
 ## Project structure
 
 ```
 backend/
   src/wellness/
-    main.py               # FastAPI app entrypoint
-    config.py              # pydantic-settings
+    main.py               # FastAPI app entrypoint, CORS (scoped to FRONTEND_ORIGIN)
+    config.py              # pydantic-settings — JWT_SECRET etc.
     db.py                  # async SQLAlchemy engine/session factory
-    security.py             # password hashing (smoke-test grade, see TODO in file)
+    security.py             # password hashing + JWT access-token encode/decode
     logging.py
     api/
-      deps.py               # pagination, etc.
+      deps.py               # pagination, get_current_user (unapplied so far)
       errors.py             # commit_or_409, not_found
-      v1/                   # one router per table + analysis.py
+      v1/                   # one router per table + analysis.py + auth.py
     schemas/                # Pydantic request/response models, one file per table
     analysis/
       mood_spend.py          # mood/arousal vs. excess-spend correlation (shared core)
@@ -175,29 +224,39 @@ backend/
       base.py             # declarative Base + naming convention
       enums.py            # ValenceLevel, ArousalLabel, Level3, ...
       users.py            # User, QuestionnaireResponse
+      auth.py             # RefreshToken, LoginFailure (session + rate-limit storage)
       checkins.py         # Checkin (manual physiological + valence reading)
       baseline.py          # UserBaseline (per-user, per-metric mean/sd)
       arousal.py           # ArousalState (derived from checkin vs. baseline)
+      biometric_samples.py  # wearable-sourced readings, feeds baseline/arousal
       categories.py        # Category (shared spending category lookup)
       transactions.py      # Transaction (optionally linked to a checkin)
       financial.py          # FinancialProfile (versioned, never updated in place)
       banking.py            # BankAccount, BankLedger
       goals.py               # UserGoal
       notifications.py       # UserSettings, NotificationOutbox, NotificationFeedback
-  alembic/versions/       # source of truth for the DB schema
+  alembic/versions/       # source of truth for the DB schema (0001–0006)
   scripts/
     mood_spend_correlation.py  # CLI: mood/arousal vs. excess-spend correlation + plots
-    seed_test_data.py           # synthetic demo data for the above
+    seed_demo_data.py           # full realistic demo user — the one to use day to day
+    seed_biometric_samples.py   # just wearable sample data, for one existing user
+    seed_test_data.py           # narrower/older seed, for the frontend/ correlation viewer
   tests/
   schema.sql                # human-readable reference copy — NOT applied directly, see above
   docker-compose.yml       # Postgres
   init.sql
   .env.example
-frontend/
-  index.html               # correlation results viewer
+web/                        # the real frontend — Vite + React
+  src/
+    pages/                   # LandingPage, Signup, Login, one file per route
+    components/landing/      # Header, Hero, Features, HowItWorks, JoinBand, Footer
+    context/AuthContext.jsx  # access token in memory, refresh-on-mount, login/logout/register
+    lib/api.js                # fetch wrapper: attaches the token, retries once on 401
+  vite.config.js            # proxies /api/* to the backend — no CORS setup needed in dev
+frontend/                   # older, separate — plain HTML/JS correlation viewer
+  index.html
   js/app.js
   css/style.css
-FinancialWellnessLanding.jsx  # marketing/landing page (React), unrelated to frontend/
 ```
 
 ## Dev tooling

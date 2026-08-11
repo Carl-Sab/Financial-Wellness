@@ -62,6 +62,11 @@ from wellness.security import hash_password
 from wellness.services.analysis import get_mood_spending_analysis
 from wellness.services.arousal import score_checkin
 from wellness.services.baseline import refresh_baseline
+from wellness.services.questionnaire_scoring import (
+    BLOCK_E_NORM,
+    raw_responses_with_polarity,
+    score_block,
+)
 
 SEED = 20260810
 
@@ -265,19 +270,26 @@ def _questionnaire_responses() -> dict[str, object]:
     self_control_items = [random.randint(1, 5) for _ in range(13)]
     hedonic_items = [random.randint(1, 7) for _ in range(11)]
     utilitarian_items = [random.randint(1, 7) for _ in range(4)]
+    norm_items = [random.randint(1, 5) for _ in range(BLOCK_E_NORM.item_count)]
 
     raw: dict[str, object] = {
         **{f"impulse_{i + 1}": v for i, v in enumerate(impulse_items)},
         **{f"self_control_{i + 1}": v for i, v in enumerate(self_control_items)},
         **{f"hedonic_{i + 1}": v for i, v in enumerate(hedonic_items)},
         **{f"utilitarian_{i + 1}": v for i, v in enumerate(utilitarian_items)},
+        **{f"norm_{i + 1}": v for i, v in enumerate(norm_items)},
     }
+    # Block E's reverse-coding depends on which pairs have their favourable
+    # adjective on the left — routed through the real scoring service
+    # rather than duplicated here, so seed data can't silently drift from
+    # what POST /api/v1/questionnaire actually computes.
     return {
         "impulse_tendency_score": round(sum(impulse_items) / len(impulse_items), 2),
         "self_control_score": round(sum(self_control_items) / len(self_control_items), 2),
         "hedonic_score": round(sum(hedonic_items) / len(hedonic_items), 2),
         "utilitarian_score": round(sum(utilitarian_items) / len(utilitarian_items), 2),
-        "raw_responses": raw,
+        "normative_eval_score": score_block(BLOCK_E_NORM, norm_items),
+        "raw_responses": raw_responses_with_polarity(raw),
     }
 
 

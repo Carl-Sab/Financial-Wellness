@@ -10,6 +10,7 @@ async def test_questionnaire_response_crud_lifecycle(client: AsyncClient, user_i
             "self_control_score": 2.5,
             "hedonic_score": 4.0,
             "utilitarian_score": 5.0,
+            "normative_eval_score": 3.0,
             "raw_responses": {"ibt_1": 4, "sc_1": 2},
         },
     )

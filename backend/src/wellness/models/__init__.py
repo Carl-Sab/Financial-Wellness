@@ -9,6 +9,7 @@ transactions.py.
 """
 
 from wellness.models.arousal import ArousalState
+from wellness.models.auth import LoginFailure, RefreshToken
 from wellness.models.banking import BankAccount, BankLedger
 from wellness.models.base import Base
 from wellness.models.baseline import UserBaseline
@@ -30,9 +31,11 @@ __all__ = [
     "Category",
     "Checkin",
     "FinancialProfile",
+    "LoginFailure",
     "NotificationFeedback",
     "NotificationOutbox",
     "QuestionnaireResponse",
+    "RefreshToken",
     "Transaction",
     "User",
     "UserBaseline",

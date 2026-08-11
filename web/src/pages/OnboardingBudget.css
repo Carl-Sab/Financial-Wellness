@@ -1,0 +1,18 @@
+.budget__input-wrap {
+  position: relative;
+}
+
+.budget__symbol {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.budget__input {
+  padding-left: 3.25rem;
+}

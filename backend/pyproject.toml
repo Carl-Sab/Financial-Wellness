@@ -20,6 +20,7 @@ dependencies = [
     "matplotlib>=3.11.1",
     "scipy>=1.18.0",
     "pydantic-ai>=2.24.0",
+    "pyjwt>=2.9",
 ]
 
 [dependency-groups]
@@ -75,7 +76,7 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-plugins = ["sqlalchemy.ext.mypy.plugin"]
+plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
 mypy_path = "src"
 explicit_package_bases = true
 

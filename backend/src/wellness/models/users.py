@@ -10,9 +10,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
-    Index,
     Text,
-    desc,
     func,
     text,
 )
@@ -53,7 +51,10 @@ class User(Base):
 
 
 class QuestionnaireResponse(Base):
-    """Signup questionnaire: four trait-framed scales, administered once.
+    """Signup questionnaire: four trait-framed scales, administered once —
+    unique=True on user_id is what makes "once" an actual guarantee (see
+    POST /api/v1/questionnaire's 409-on-duplicate) rather than just an
+    application-level check a race could slip past.
 
     Raw item responses are kept alongside the computed scores so the scores
     can be recomputed or checked for reliability later.
@@ -63,7 +64,10 @@ class QuestionnaireResponse(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
 
     # Rook & Fisher (1995), 9 items, 1-5
@@ -74,6 +78,12 @@ class QuestionnaireResponse(Base):
     hedonic_score: Mapped[float | None] = mapped_column(REAL, nullable=True)
     # Babin et al. (1994) adapted to trait framing, 4 items, 1-7
     utilitarian_score: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    # Block E: 8 semantic-differential pairs on an impulse-purchase
+    # scenario, averaged for a range of 1-5, same scale as the other
+    # blocks. NOT NULL, unlike the four scores above — Block E became a
+    # required part of the instrument after those columns were added, so
+    # it doesn't carry their nullable-for-partial-submission history.
+    normative_eval_score: Mapped[float] = mapped_column(REAL, nullable=False)
 
     raw_responses: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     instrument_version: Mapped[str] = mapped_column(
@@ -90,5 +100,7 @@ class QuestionnaireResponse(Base):
         CheckConstraint("self_control_score BETWEEN 1 AND 5", name="self_control_score_range"),
         CheckConstraint("hedonic_score BETWEEN 1 AND 7", name="hedonic_score_range"),
         CheckConstraint("utilitarian_score BETWEEN 1 AND 7", name="utilitarian_score_range"),
-        Index("ix_questionnaire_responses_user_id_completed_at", "user_id", desc("completed_at")),
+        CheckConstraint(
+            "normative_eval_score BETWEEN 1 AND 5", name="normative_eval_score_range"
+        ),
     )

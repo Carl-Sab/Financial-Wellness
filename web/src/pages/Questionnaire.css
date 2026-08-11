@@ -1,0 +1,248 @@
+/* Single-column, not Signup's two-column ECG-panel layout — that split is
+   built for a short form; this one can run to 13 stacked items on Block B
+   and needs the full width for reading, not a lime side panel. */
+
+.questionnaire {
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.questionnaire__progress {
+  height: 4px;
+  background: var(--color-hairline);
+}
+
+.questionnaire__progress-fill {
+  height: 100%;
+  background: var(--color-lime);
+  transition: width 0.3s var(--ease-out);
+}
+
+.questionnaire__content {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-7) var(--content-pad);
+}
+
+.questionnaire__content form {
+  width: 100%;
+  max-width: 560px;
+}
+
+.questionnaire__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.questionnaire__back:hover {
+  color: var(--color-text);
+}
+
+.questionnaire__title {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-3);
+}
+
+/* Focus target only (see Questionnaire.jsx's per-step focus management) —
+   no visible ring needed, the step change itself is the signal. */
+.questionnaire__title:focus-visible {
+  outline: none;
+}
+
+.questionnaire__intro {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-5);
+}
+
+.questionnaire__anchors {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.questionnaire__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.questionnaire__form-error {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  margin-bottom: var(--space-4);
+}
+
+.questionnaire__retry {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-error);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.questionnaire__submit {
+  width: 100%;
+}
+
+/* --- Likert item --- */
+
+.likert__statement {
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: var(--leading-snug);
+  margin-bottom: var(--space-3);
+}
+
+.likert__scale {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.likert__option {
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-white);
+  border: 1.5px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.likert__option:hover {
+  border-color: var(--color-ink);
+}
+
+.likert__option:focus-visible {
+  outline: none;
+  border-color: var(--color-lime);
+  box-shadow: 0 0 0 3px var(--color-lime);
+}
+
+.likert__option--selected {
+  background: var(--color-lime);
+  border-color: var(--color-lime);
+}
+
+@media (max-width: 480px) {
+  .likert__scale {
+    gap: var(--space-1);
+  }
+
+  .likert__option {
+    padding: 0.6rem 0;
+    font-size: var(--text-xs);
+  }
+}
+
+/* --- Block E: scenario card + semantic-differential rows --- */
+
+/* Sticky so the scenario stays visible while scrolling the 8 pair rows
+   below it — the pairs only make sense read against it. `top` sits below
+   the page's own progress bar; z-index keeps it above the rows it
+   overlaps while scrolling. */
+.questionnaire__scenario {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-mist);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.questionnaire__scenario p {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: var(--leading-snug);
+  color: var(--color-text);
+}
+
+.sd-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sd-row__label {
+  flex: 0 0 auto;
+  width: 84px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.sd-row__label--left {
+  text-align: right;
+}
+
+.sd-row__scale {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.sd-row__option {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-white);
+  border: 1.5px solid var(--color-hairline);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.sd-row__option:hover {
+  border-color: var(--color-ink);
+}
+
+.sd-row__option:focus-visible {
+  outline: none;
+  border-color: var(--color-lime);
+  box-shadow: 0 0 0 3px var(--color-lime);
+}
+
+.sd-row__option--selected {
+  background: var(--color-lime);
+  border-color: var(--color-lime);
+}
+
+@media (max-width: 480px) {
+  .sd-row__label {
+    width: 60px;
+    font-size: var(--text-xs);
+  }
+
+  .sd-row__scale {
+    gap: var(--space-2);
+  }
+
+  .sd-row__option {
+    width: 26px;
+    height: 26px;
+  }
+}

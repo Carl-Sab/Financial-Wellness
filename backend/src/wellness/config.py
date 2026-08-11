@@ -31,6 +31,16 @@ class Settings(BaseSettings):
     gateway_api_key: str | None = Field(default=None, validation_alias="API_KEY_SECRET_FROM_EURISKO")
     report_model: str = "claude-sonnet-5"
 
+    # No default, deliberately: a fallback here (even an obvious placeholder
+    # like "dev-secret") is exactly how a real secret fails to get set in
+    # production and nobody notices until it's a signing key an attacker can
+    # guess. Missing JWT_SECRET must fail app startup, not degrade quietly —
+    # see security.py's create_access_token/decode_access_token.
+    jwt_secret: str
+    # Not a secret — just where CORS/cookies expect the dev frontend to be.
+    # Real default is fine here.
+    frontend_origin: str = "http://localhost:5173"
+
     def sqlalchemy_database_url(self) -> str:
         if self.database_url:
             return self.database_url
