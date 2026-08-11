@@ -11,3 +11,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+
+# Python / ai (from AI_Branch's .gitignore — merged into ai/, scoped there)
+ai/.venv/
+ai/**/*.py[cod]
+ai/**/*.egg-info/
