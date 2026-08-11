@@ -9,7 +9,6 @@ GoalPeriod = Literal["weekly", "monthly", "daily"]
 
 
 class UserGoalCreate(BaseModel):
-    user_id: uuid.UUID
     goal_type: str
     category_code: str | None = None
     target_amount: Decimal = Field(gt=0)

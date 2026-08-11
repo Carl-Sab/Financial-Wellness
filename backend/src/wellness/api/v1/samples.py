@@ -1,10 +1,9 @@
-# Smoke-test endpoints only — no auth. TODO: add real authentication before
-# this is exposed beyond local smoke testing.
+# TODO: add real authentication before this is exposed beyond local smoke
+# testing.
 #
 # No PATCH/update endpoint by design: a biometric sample is an ingested
 # wearable reading, not user-edited data.
 
-import uuid
 from datetime import date, timedelta
 from typing import Annotated, Literal
 
@@ -15,10 +14,10 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wellness.api.deps import PageParams, page_params
+from wellness.api.deps import PageParams, get_current_user, page_params
 from wellness.api.errors import commit_or_409, not_found
 from wellness.db import get_session
-from wellness.models import BiometricSample
+from wellness.models import BiometricSample, User
 from wellness.schemas.samples import (
     SampleAverageBucket,
     SampleBatchResult,
@@ -29,6 +28,14 @@ from wellness.schemas.samples import (
 router = APIRouter(prefix="/samples", tags=["samples"])
 
 _CONFLICT_KEY = (BiometricSample.user_id, BiometricSample.ts, BiometricSample.data_source)
+
+
+# TODO: POST "" and POST "/batch" below are deliberately left unauthenticated
+# — the Apple Watch Shortcut posts to these with no session. Before any real
+# deployment, these need a per-device token (checked here, not a full user
+# session) so an arbitrary caller can't write biometric data for any
+# user_id they like. Everything else in this router now requires
+# get_current_user; only ingestion is still open.
 
 
 @router.post("", response_model=SampleRead)
@@ -100,10 +107,10 @@ async def create_samples_batch(
 
 @router.get("/averages", response_model=list[SampleAverageBucket])
 async def get_sample_averages(
-    user_id: uuid.UUID,
     period: Literal["day", "week", "month"],
     from_date: date | None = None,
     to_date: date | None = None,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[SampleAverageBucket]:
     bucket = sa_func.date_trunc(period, BiometricSample.ts).label("period_start")
@@ -115,7 +122,7 @@ async def get_sample_averages(
             sa_func.max(BiometricSample.heart_rate),
             sa_func.count(BiometricSample.heart_rate),
         )
-        .where(BiometricSample.user_id == user_id, BiometricSample.heart_rate.is_not(None))
+        .where(BiometricSample.user_id == current_user.id, BiometricSample.heart_rate.is_not(None))
         .group_by(bucket)
         .order_by(bucket)
     )
@@ -139,32 +146,41 @@ async def get_sample_averages(
 
 @router.get("", response_model=list[SampleRead])
 async def list_samples(
-    user_id: uuid.UUID | None = None,
     pagination: PageParams = Depends(page_params),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[BiometricSample]:
-    query = select(BiometricSample).order_by(BiometricSample.ts.desc())
-    if user_id is not None:
-        query = query.where(BiometricSample.user_id == user_id)
-    query = query.limit(pagination.limit).offset(pagination.offset)
+    query = (
+        select(BiometricSample)
+        .where(BiometricSample.user_id == current_user.id)
+        .order_by(BiometricSample.ts.desc())
+        .limit(pagination.limit)
+        .offset(pagination.offset)
+    )
     result = await session.execute(query)
     return list(result.scalars().all())
 
 
 @router.get("/{sample_id}", response_model=SampleRead)
 async def get_sample(
-    sample_id: int, session: AsyncSession = Depends(get_session)
+    sample_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> BiometricSample:
     sample = await session.get(BiometricSample, sample_id)
-    if sample is None:
+    if sample is None or sample.user_id != current_user.id:
         raise not_found("biometric_sample")
     return sample
 
 
 @router.delete("/{sample_id}", status_code=204)
-async def delete_sample(sample_id: int, session: AsyncSession = Depends(get_session)) -> None:
+async def delete_sample(
+    sample_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
     sample = await session.get(BiometricSample, sample_id)
-    if sample is None:
+    if sample is None or sample.user_id != current_user.id:
         raise not_found("biometric_sample")
     await session.delete(sample)
     await commit_or_409(session)

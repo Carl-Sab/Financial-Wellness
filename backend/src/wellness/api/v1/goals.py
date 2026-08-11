@@ -1,6 +1,3 @@
-# Smoke-test endpoints only — no auth. TODO: add real authentication before
-# this is exposed beyond local smoke testing.
-#
 # No progress/current_spent is ever stored on user_goals — /progress below
 # always recomputes it by summing transactions for the goal's period. See
 # the boundary comment in wellness.models.goals.
@@ -13,7 +10,7 @@ from sqlalchemy import func as sa_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wellness.api.deps import PageParams, page_params
+from wellness.api.deps import PageParams, get_current_user, page_params
 from wellness.api.errors import commit_or_409, not_found
 from wellness.db import get_session
 from wellness.models import Transaction, User, UserGoal
@@ -24,9 +21,11 @@ router = APIRouter(prefix="/goals", tags=["user_goals"])
 
 @router.post("", response_model=UserGoalRead, status_code=201)
 async def create_goal(
-    payload: UserGoalCreate, session: AsyncSession = Depends(get_session)
+    payload: UserGoalCreate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> UserGoal:
-    goal = UserGoal(**payload.model_dump())
+    goal = UserGoal(**payload.model_dump(), user_id=current_user.id)
     session.add(goal)
     await commit_or_409(session)
     await session.refresh(goal)
@@ -36,10 +35,12 @@ async def create_goal(
 @router.get("", response_model=list[UserGoalRead])
 async def list_goals(
     pagination: PageParams = Depends(page_params),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[UserGoal]:
     result = await session.execute(
         select(UserGoal)
+        .where(UserGoal.user_id == current_user.id)
         .order_by(UserGoal.created_at.desc())
         .limit(pagination.limit)
         .offset(pagination.offset)
@@ -48,19 +49,26 @@ async def list_goals(
 
 
 @router.get("/{goal_id}", response_model=UserGoalRead)
-async def get_goal(goal_id: int, session: AsyncSession = Depends(get_session)) -> UserGoal:
+async def get_goal(
+    goal_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> UserGoal:
     goal = await session.get(UserGoal, goal_id)
-    if goal is None:
+    if goal is None or goal.user_id != current_user.id:
         raise not_found("user_goal")
     return goal
 
 
 @router.patch("/{goal_id}", response_model=UserGoalRead)
 async def update_goal(
-    goal_id: int, payload: UserGoalUpdate, session: AsyncSession = Depends(get_session)
+    goal_id: int,
+    payload: UserGoalUpdate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> UserGoal:
     goal = await session.get(UserGoal, goal_id)
-    if goal is None:
+    if goal is None or goal.user_id != current_user.id:
         raise not_found("user_goal")
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(goal, key, value)
@@ -70,9 +78,13 @@ async def update_goal(
 
 
 @router.delete("/{goal_id}", status_code=204)
-async def delete_goal(goal_id: int, session: AsyncSession = Depends(get_session)) -> None:
+async def delete_goal(
+    goal_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
     goal = await session.get(UserGoal, goal_id)
-    if goal is None:
+    if goal is None or goal.user_id != current_user.id:
         raise not_found("user_goal")
     await session.delete(goal)
     await commit_or_409(session)
@@ -111,19 +123,19 @@ def _daily_window(user_timezone: str) -> tuple[date, datetime, datetime]:
 
 @router.get("/{goal_id}/progress", response_model=GoalProgress)
 async def get_goal_progress(
-    goal_id: int, session: AsyncSession = Depends(get_session)
+    goal_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> GoalProgress:
     goal = await session.get(UserGoal, goal_id)
-    if goal is None:
+    if goal is None or goal.user_id != current_user.id:
         raise not_found("user_goal")
 
     window_start: date | datetime
     window_end: date | datetime
 
     if goal.period == "daily":
-        user = await session.get(User, goal.user_id)
-        user_timezone = user.timezone if user is not None else "UTC"
-        period_start, window_start, window_end = _daily_window(user_timezone)
+        period_start, window_start, window_end = _daily_window(current_user.timezone)
         period_end = period_start
     else:
         period_start, period_end = _current_period(goal, date.today())

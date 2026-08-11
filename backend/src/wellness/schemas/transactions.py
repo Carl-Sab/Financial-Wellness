@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class TransactionCreate(BaseModel):
-    user_id: uuid.UUID
     checkin_id: int | None = None
     amount: Decimal = Field(ge=0)
     currency: str = "LBP"

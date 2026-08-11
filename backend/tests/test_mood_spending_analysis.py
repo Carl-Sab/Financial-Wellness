@@ -19,23 +19,27 @@ TODAY = date.today()
 _RANGE = {"from_date": TODAY.isoformat(), "to_date": TODAY.isoformat(), "granularity": "week"}
 
 
-async def _mood_spending(client: AsyncClient, user_id: str) -> Response:
+async def _mood_spending(client: AsyncClient, headers: dict[str, str]) -> Response:
     return await client.get(
-        "/api/v1/analysis/mood-spending", params={"user_id": user_id, **_RANGE}
+        "/api/v1/analysis/mood-spending", params=_RANGE, headers=headers
     )
 
 
-async def _create_checkin(client: AsyncClient, user_id: str, **fields: Any) -> dict[str, Any]:
-    payload = {"user_id": user_id, "category_code": "groceries", "valence": "neutral", **fields}
-    resp = await client.post("/api/v1/checkins", json=payload)
+async def _create_checkin(
+    client: AsyncClient, headers: dict[str, str], **fields: Any
+) -> dict[str, Any]:
+    payload = {"category_code": "groceries", "valence": "neutral", **fields}
+    resp = await client.post("/api/v1/checkins", json=payload, headers=headers)
     assert resp.status_code == 201, resp.text
     result: dict[str, Any] = resp.json()
     return result
 
 
-async def _create_transaction(client: AsyncClient, user_id: str, **fields: Any) -> dict[str, Any]:
-    payload = {"user_id": user_id, "category_code": "groceries", **fields}
-    resp = await client.post("/api/v1/transactions", json=payload)
+async def _create_transaction(
+    client: AsyncClient, headers: dict[str, str], **fields: Any
+) -> dict[str, Any]:
+    payload = {"category_code": "groceries", **fields}
+    resp = await client.post("/api/v1/transactions", json=payload, headers=headers)
     assert resp.status_code == 201, resp.text
     result: dict[str, Any] = resp.json()
     return result
@@ -59,20 +63,26 @@ def _bucket(body: dict[str, Any], mood: str) -> dict[str, int | Decimal]:
     }
 
 
-async def _build_mature_hr_baseline(client: AsyncClient, user_id: str) -> None:
+async def _build_mature_hr_baseline(client: AsyncClient, headers: dict[str, str]) -> None:
     """10 check-ins with varied heart_rate, no transactions attached — just
     enough (>= 8) to make the baseline usable (baseline_factor != 0).
     """
     for hr in (68, 74, 71, 80, 65, 90, 72, 69, 77, 83):
-        await _create_checkin(client, user_id, heart_rate=hr)
+        await _create_checkin(client, headers, heart_rate=hr)
+
+
+async def test_mood_spending_unauthenticated_returns_401(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/analysis/mood-spending", params=_RANGE)
+    assert resp.status_code == 401
 
 
 async def test_user_with_no_budget_is_excluded_not_crashed(
-    client: AsyncClient, user_id: str
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
-    await _create_transaction(client, user_id, amount="10.00")
+    _user_id, headers = authed_user
+    await _create_transaction(client, headers, amount="10.00")
 
-    resp = await _mood_spending(client, user_id)
+    resp = await _mood_spending(client, headers)
     assert resp.status_code == 200
     body = resp.json()
     assert body["daily_budget"] == {"amount": None, "source": "none"}
@@ -80,10 +90,11 @@ async def test_user_with_no_budget_is_excluded_not_crashed(
 
 
 async def test_budget_source_falls_back_through_priority_chain(
-    client: AsyncClient, user_id: str, db_session: AsyncSession
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]], db_session: AsyncSession
 ) -> None:
+    user_id, headers = authed_user
     # 1. nothing configured -> 'none'
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     assert body["daily_budget"]["source"] == "none"
 
     # 2. a financial_profile -> 'profile', amount = avg_monthly_spend / 30
@@ -94,7 +105,7 @@ async def test_budget_source_falls_back_through_priority_chain(
     )
     await db_session.commit()
 
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     assert body["daily_budget"]["source"] == "profile"
     assert Decimal(body["daily_budget"]["amount"]) == Decimal("900.00") / Decimal(30)
 
@@ -102,14 +113,14 @@ async def test_budget_source_falls_back_through_priority_chain(
     await client.post(
         "/api/v1/goals",
         json={
-            "user_id": user_id,
             "goal_type": "monthly_budget",
             "target_amount": "3000.00",
             "period": "monthly",
             "starts_on": TODAY.isoformat(),
         },
+        headers=headers,
     )
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     assert body["daily_budget"]["source"] == "goal_monthly"
     assert Decimal(body["daily_budget"]["amount"]) == Decimal("3000.00") / Decimal(30)
 
@@ -117,163 +128,169 @@ async def test_budget_source_falls_back_through_priority_chain(
     await client.post(
         "/api/v1/goals",
         json={
-            "user_id": user_id,
             "goal_type": "monthly_budget",
             "target_amount": "150.00",
             "period": "daily",
             "starts_on": TODAY.isoformat(),
         },
+        headers=headers,
     )
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     assert body["daily_budget"]["source"] == "goal_daily"
     assert Decimal(body["daily_budget"]["amount"]) == Decimal("150.00")
 
 
 async def test_threshold_crossing_transaction_is_flagged_earlier_ones_are_not(
-    client: AsyncClient, user_id: str
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
+    _user_id, headers = authed_user
     await client.post(
         "/api/v1/goals",
         json={
-            "user_id": user_id,
             "goal_type": "monthly_budget",
             "target_amount": "100.00",
             "period": "daily",
             "starts_on": TODAY.isoformat(),
         },
+        headers=headers,
     )
 
     ts = f"{TODAY.isoformat()}T09:00:00Z"
-    await _create_transaction(client, user_id, amount="40.00", occurred_at=ts)
+    await _create_transaction(client, headers, amount="40.00", occurred_at=ts)
     ts = f"{TODAY.isoformat()}T12:00:00Z"
-    await _create_transaction(client, user_id, amount="40.00", occurred_at=ts)  # running: 80
+    await _create_transaction(client, headers, amount="40.00", occurred_at=ts)  # running: 80
     ts = f"{TODAY.isoformat()}T15:00:00Z"
-    await _create_transaction(client, user_id, amount="40.00", occurred_at=ts)  # running: 120 > 100
+    await _create_transaction(client, headers, amount="40.00", occurred_at=ts)  # running: 120 > 100
 
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     unclassified = _bucket(body, "unclassified")
     assert unclassified["transaction_count"] == 3
     assert unclassified["overspend_count"] == 1
 
 
-async def test_null_checkin_id_lands_in_unclassified(client: AsyncClient, user_id: str) -> None:
+async def test_null_checkin_id_lands_in_unclassified(
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
+) -> None:
+    _user_id, headers = authed_user
     await client.post(
         "/api/v1/goals",
         json={
-            "user_id": user_id,
             "goal_type": "monthly_budget",
             "target_amount": "3000.00",
             "period": "monthly",
             "starts_on": TODAY.isoformat(),
         },
+        headers=headers,
     )
-    await _create_transaction(client, user_id, amount="25.00")
+    await _create_transaction(client, headers, amount="25.00")
 
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     assert _bucket(body, "unclassified")["transaction_count"] == 1
     for mood in ("stressed", "positive", "negative", "neutral"):
         assert _bucket(body, mood)["transaction_count"] == 0
 
 
 async def test_unknown_arousal_label_excluded_from_every_bucket(
-    client: AsyncClient, user_id: str
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
+    _user_id, headers = authed_user
     await client.post(
         "/api/v1/goals",
         json={
-            "user_id": user_id,
             "goal_type": "monthly_budget",
             "target_amount": "3000.00",
             "period": "monthly",
             "starts_on": TODAY.isoformat(),
         },
+        headers=headers,
     )
     # eda_microsiemens: a metric with no baseline anywhere for this user ->
     # metrics_used = 0 -> label 'unknown', regardless of anything else.
-    checkin = await _create_checkin(client, user_id, eda_microsiemens=5.0, valence="pleasant")
-    assert (await client.get(f"/api/v1/checkins/{checkin['id']}/arousal")).json()["label"] == (
-        "unknown"
-    )
-    await _create_transaction(client, user_id, amount="15.00", checkin_id=checkin["id"])
+    checkin = await _create_checkin(client, headers, eda_microsiemens=5.0, valence="pleasant")
+    arousal_resp = await client.get(f"/api/v1/checkins/{checkin['id']}/arousal", headers=headers)
+    assert arousal_resp.json()["label"] == "unknown"
+    await _create_transaction(client, headers, amount="15.00", checkin_id=checkin["id"])
 
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     for mood in ("stressed", "positive", "negative", "neutral", "unclassified"):
         assert _bucket(body, mood)["transaction_count"] == 0
 
 
 async def test_unpleasant_and_high_arousal_lands_in_stressed_only(
-    client: AsyncClient, user_id: str
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
+    _user_id, headers = authed_user
     await client.post(
         "/api/v1/goals",
         json={
-            "user_id": user_id,
             "goal_type": "monthly_budget",
             "target_amount": "3000.00",
             "period": "monthly",
             "starts_on": TODAY.isoformat(),
         },
+        headers=headers,
     )
-    await _build_mature_hr_baseline(client, user_id)
+    await _build_mature_hr_baseline(client, headers)
 
-    checkin = await _create_checkin(client, user_id, heart_rate=150, valence="unpleasant")
-    arousal = (await client.get(f"/api/v1/checkins/{checkin['id']}/arousal")).json()
-    assert arousal["label"] == "high"
+    checkin = await _create_checkin(client, headers, heart_rate=150, valence="unpleasant")
+    arousal_resp = await client.get(f"/api/v1/checkins/{checkin['id']}/arousal", headers=headers)
+    assert arousal_resp.json()["label"] == "high"
 
-    await _create_transaction(client, user_id, amount="20.00", checkin_id=checkin["id"])
+    await _create_transaction(client, headers, amount="20.00", checkin_id=checkin["id"])
 
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
     assert _bucket(body, "stressed")["transaction_count"] == 1
     assert _bucket(body, "negative")["transaction_count"] == 0
 
 
 async def test_reconciliation_all_buckets_plus_excluded_equal_total(
-    client: AsyncClient, user_id: str
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
+    _user_id, headers = authed_user
     await client.post(
         "/api/v1/goals",
         json={
-            "user_id": user_id,
             "goal_type": "monthly_budget",
             "target_amount": "3000.00",
             "period": "monthly",
             "starts_on": TODAY.isoformat(),
         },
+        headers=headers,
     )
-    await _build_mature_hr_baseline(client, user_id)
+    await _build_mature_hr_baseline(client, headers)
     created_total = 0
 
     # stressed: high arousal, valence irrelevant to the bucket it lands in
-    stressed_checkin = await _create_checkin(client, user_id, heart_rate=150, valence="unpleasant")
-    await _create_transaction(client, user_id, amount="10.00", checkin_id=stressed_checkin["id"])
+    stressed_checkin = await _create_checkin(client, headers, heart_rate=150, valence="unpleasant")
+    await _create_transaction(client, headers, amount="10.00", checkin_id=stressed_checkin["id"])
     created_total += 1
 
     # positive: near-baseline HR (not 'high'), pleasant valence
-    positive_checkin = await _create_checkin(client, user_id, heart_rate=71, valence="pleasant")
-    await _create_transaction(client, user_id, amount="11.00", checkin_id=positive_checkin["id"])
+    positive_checkin = await _create_checkin(client, headers, heart_rate=71, valence="pleasant")
+    await _create_transaction(client, headers, amount="11.00", checkin_id=positive_checkin["id"])
     created_total += 1
 
     # negative: near-baseline HR (not 'high'), unpleasant valence
-    negative_checkin = await _create_checkin(client, user_id, heart_rate=72, valence="unpleasant")
-    await _create_transaction(client, user_id, amount="12.00", checkin_id=negative_checkin["id"])
+    negative_checkin = await _create_checkin(client, headers, heart_rate=72, valence="unpleasant")
+    await _create_transaction(client, headers, amount="12.00", checkin_id=negative_checkin["id"])
     created_total += 1
 
     # neutral: near-baseline HR (not 'high'), neutral valence
-    neutral_checkin = await _create_checkin(client, user_id, heart_rate=70, valence="neutral")
-    await _create_transaction(client, user_id, amount="13.00", checkin_id=neutral_checkin["id"])
+    neutral_checkin = await _create_checkin(client, headers, heart_rate=70, valence="neutral")
+    await _create_transaction(client, headers, amount="13.00", checkin_id=neutral_checkin["id"])
     created_total += 1
 
     # unclassified: no checkin at all
-    await _create_transaction(client, user_id, amount="14.00")
+    await _create_transaction(client, headers, amount="14.00")
     created_total += 1
 
     # excluded: label 'unknown' via a metric with no established baseline
-    excluded_checkin = await _create_checkin(client, user_id, eda_microsiemens=3.0)
-    await _create_transaction(client, user_id, amount="15.00", checkin_id=excluded_checkin["id"])
+    excluded_checkin = await _create_checkin(client, headers, eda_microsiemens=3.0)
+    await _create_transaction(client, headers, amount="15.00", checkin_id=excluded_checkin["id"])
     excluded_count = 1
     created_total += 1
 
-    body = (await _mood_spending(client, user_id)).json()
+    body = (await _mood_spending(client, headers)).json()
 
     stressed = _bucket(body, "stressed")["transaction_count"]
     positive = _bucket(body, "positive")["transaction_count"]

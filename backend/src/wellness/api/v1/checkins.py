@@ -1,15 +1,12 @@
-# Smoke-test endpoints only — no auth. TODO: add real authentication before
-# this is exposed beyond local smoke testing.
-
 import structlog
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wellness.api.deps import PageParams, page_params
+from wellness.api.deps import PageParams, get_current_user, page_params
 from wellness.api.errors import commit_or_409, not_found
 from wellness.db import get_session
-from wellness.models import ArousalState, Checkin
+from wellness.models import ArousalState, Checkin, User
 from wellness.schemas.arousal import ArousalStateRead
 from wellness.schemas.checkins import CheckinCreate, CheckinRead, CheckinUpdate
 from wellness.services.arousal import score_checkin
@@ -21,9 +18,11 @@ logger = structlog.get_logger(__name__)
 
 @router.post("", response_model=CheckinRead, status_code=201)
 async def create_checkin(
-    payload: CheckinCreate, session: AsyncSession = Depends(get_session)
+    payload: CheckinCreate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> Checkin:
-    checkin = Checkin(**payload.model_dump())
+    checkin = Checkin(**payload.model_dump(), user_id=current_user.id)
     session.add(checkin)
     await commit_or_409(session)
     await session.refresh(checkin)
@@ -43,10 +42,12 @@ async def create_checkin(
 @router.get("", response_model=list[CheckinRead])
 async def list_checkins(
     pagination: PageParams = Depends(page_params),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[Checkin]:
     result = await session.execute(
         select(Checkin)
+        .where(Checkin.user_id == current_user.id)
         .order_by(Checkin.entered_at.desc())
         .limit(pagination.limit)
         .offset(pagination.offset)
@@ -55,17 +56,27 @@ async def list_checkins(
 
 
 @router.get("/{checkin_id}", response_model=CheckinRead)
-async def get_checkin(checkin_id: int, session: AsyncSession = Depends(get_session)) -> Checkin:
+async def get_checkin(
+    checkin_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Checkin:
     checkin = await session.get(Checkin, checkin_id)
-    if checkin is None:
+    if checkin is None or checkin.user_id != current_user.id:
         raise not_found("checkin")
     return checkin
 
 
 @router.get("/{checkin_id}/arousal", response_model=ArousalStateRead)
 async def get_checkin_arousal(
-    checkin_id: int, session: AsyncSession = Depends(get_session)
+    checkin_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> ArousalState:
+    checkin = await session.get(Checkin, checkin_id)
+    if checkin is None or checkin.user_id != current_user.id:
+        raise not_found("checkin")
+
     result = await session.execute(
         select(ArousalState).where(ArousalState.checkin_id == checkin_id)
     )
@@ -77,10 +88,13 @@ async def get_checkin_arousal(
 
 @router.patch("/{checkin_id}", response_model=CheckinRead)
 async def update_checkin(
-    checkin_id: int, payload: CheckinUpdate, session: AsyncSession = Depends(get_session)
+    checkin_id: int,
+    payload: CheckinUpdate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> Checkin:
     checkin = await session.get(Checkin, checkin_id)
-    if checkin is None:
+    if checkin is None or checkin.user_id != current_user.id:
         raise not_found("checkin")
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(checkin, key, value)
@@ -90,9 +104,13 @@ async def update_checkin(
 
 
 @router.delete("/{checkin_id}", status_code=204)
-async def delete_checkin(checkin_id: int, session: AsyncSession = Depends(get_session)) -> None:
+async def delete_checkin(
+    checkin_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
     checkin = await session.get(Checkin, checkin_id)
-    if checkin is None:
+    if checkin is None or checkin.user_id != current_user.id:
         raise not_found("checkin")
     await session.delete(checkin)
     await commit_or_409(session)

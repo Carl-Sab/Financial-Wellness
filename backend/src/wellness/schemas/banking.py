@@ -8,7 +8,6 @@ from wellness.models.enums import LedgerDirection
 
 
 class BankAccountCreate(BaseModel):
-    user_id: uuid.UUID
     account_number: str
     currency: str = "LBP"
     is_active: bool = True

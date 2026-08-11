@@ -14,7 +14,7 @@ happened to be in the environment at that point.
 
 import os
 import uuid
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Coroutine
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -95,12 +95,68 @@ async def db_session() -> AsyncIterator["AsyncSession"]:
 
 
 @pytest_asyncio.fixture
-async def bank_account_id(client: AsyncClient, user_id: str, unique: Callable[[str], str]) -> int:
-    """A bank account created through the API, for bank_ledger tests."""
+def make_authed_user(
+    client: AsyncClient, unique: Callable[[str], str]
+) -> Callable[[], Coroutine[Any, Any, tuple[str, dict[str, str]]]]:
+    """Factory fixture for the data routers that now require
+    get_current_user (analysis, samples, goals, bank-accounts, bank-ledger,
+    transactions, checkins, arousal-state, user-baseline,
+    questionnaire-responses). Call it to register+log in a fresh real user
+    via the real auth endpoints, returning (user_id, auth_headers). Call it
+    twice in one test to get two distinct identities for cross-user
+    ownership checks — every call registers a brand-new account, so
+    identities from separate calls never collide.
+    """
+
+    async def _make() -> tuple[str, dict[str, str]]:
+        email = f"{unique('user')}@example.com"
+        password = "hunter2pass"
+        register_resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "full_name": "Test User",
+                "email": email,
+                "password": password,
+                "date_of_birth": "1990-01-01",
+            },
+        )
+        assert register_resp.status_code == 201, register_resp.text
+        new_user_id: str = register_resp.json()["id"]
+
+        login_resp = await client.post(
+            "/api/v1/auth/login", json={"email": email, "password": password}
+        )
+        assert login_resp.status_code == 200, login_resp.text
+        token = login_resp.json()["access_token"]
+        return new_user_id, {"Authorization": f"Bearer {token}"}
+
+    return _make
+
+
+@pytest_asyncio.fixture
+async def authed_user(
+    make_authed_user: Callable[[], Coroutine[Any, Any, tuple[str, dict[str, str]]]],
+) -> tuple[str, dict[str, str]]:
+    """The common case: a single authenticated identity. (user_id, headers)."""
+    return await make_authed_user()
+
+
+@pytest_asyncio.fixture
+async def authed_bank_account(
+    client: AsyncClient,
+    authed_user: tuple[str, dict[str, str]],
+    unique: Callable[[str], str],
+) -> tuple[int, dict[str, str]]:
+    """A bank account created through the API for the authed_user identity,
+    for bank_ledger tests. (account_id, auth_headers) — the headers are the
+    owning user's, needed for every bank_ledger call against this account.
+    """
+    _user_id, headers = authed_user
     resp = await client.post(
         "/api/v1/bank-accounts",
-        json={"user_id": user_id, "account_number": unique("ACC")},
+        json={"account_number": unique("ACC")},
+        headers=headers,
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 201, resp.text
     created_id: int = resp.json()["id"]
-    return created_id
+    return created_id, headers

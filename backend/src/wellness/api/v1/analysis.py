@@ -1,9 +1,5 @@
-# Smoke-test endpoints only — no auth. TODO: add real authentication before
-# this is exposed beyond local smoke testing.
-
 import base64
 import math
-import uuid
 from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,10 +8,17 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wellness.analysis.mood_spend import compute_correlations, compute_derived_columns, load_data, plot_results
+from wellness.analysis.mood_spend import (
+    compute_correlations,
+    compute_derived_columns,
+    load_data,
+    plot_results,
+)
 from wellness.analysis.report import generate_report
+from wellness.api.deps import get_current_user
 from wellness.config import get_settings
 from wellness.db import get_session
+from wellness.models import User
 from wellness.schemas.analysis import (
     MoodSpendCorrelationItem,
     MoodSpendCorrelationResponse,
@@ -32,16 +35,20 @@ def _clean(value: float) -> float | None:
 
 @router.get("/mood-spend-correlation", response_model=MoodSpendCorrelationResponse)
 async def get_mood_spend_correlation(
-    user_id: uuid.UUID | None = None,
     include_ai_report: bool = Query(
         False, description="Also generate a written AI report (slower; requires API_KEY_SECRET_FROM_EURISKO)"
     ),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> MoodSpendCorrelationResponse:
-    """Pearson correlation between excess spend and mood/arousal, across all
-    linked-checkin transactions. See wellness/analysis/mood_spend.py.
+    """Pearson correlation between excess spend and mood/arousal, across the
+    current user's linked-checkin transactions. See wellness/analysis/mood_spend.py.
+
+    Used to run across all users at once (user_id omitted) — that
+    aggregate mode is gone now that this requires auth; there's no admin
+    role to scope it to.
     """
-    raw_df = await load_data(session, user_id)
+    raw_df = await load_data(session, current_user.id)
     if raw_df.empty:
         return MoodSpendCorrelationResponse(transaction_count=0, correlations=[])
 
@@ -74,10 +81,10 @@ async def get_mood_spend_correlation(
 
 @router.get("/mood-spending", response_model=MoodSpendingResponse)
 async def get_mood_spending(
-    user_id: uuid.UUID,
     from_date: date,
     to_date: date,
     granularity: Literal["week", "month"],
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> MoodSpendingResponse:
     """Overspend rate per mood bucket (stressed/positive/negative/neutral),
@@ -85,4 +92,6 @@ async def get_mood_spending(
     """
     if from_date > to_date:
         raise HTTPException(status_code=422, detail="from_date must not be after to_date")
-    return await get_mood_spending_analysis(session, user_id, from_date, to_date, granularity)
+    return await get_mood_spending_analysis(
+        session, current_user.id, from_date, to_date, granularity
+    )

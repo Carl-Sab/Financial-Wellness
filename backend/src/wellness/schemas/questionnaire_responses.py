@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class QuestionnaireResponseCreate(BaseModel):
-    user_id: uuid.UUID
     impulse_tendency_score: float | None = Field(default=None, ge=1, le=5)
     self_control_score: float | None = Field(default=None, ge=1, le=5)
     hedonic_score: float | None = Field(default=None, ge=1, le=7)

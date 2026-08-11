@@ -1,5 +1,13 @@
-"""Integration tests for /api/v1/samples."""
+"""Integration tests for /api/v1/samples.
 
+POST "" and POST "/batch" stay unauthenticated (still take user_id in the
+body) — that's the ingestion path the Apple Watch Shortcut uses with no
+session; see the TODO in samples.py about a future device token. Every
+other endpoint here (list, averages, get, delete) now requires auth and is
+scoped to the caller.
+"""
+
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -18,8 +26,9 @@ async def test_create_sample(client: AsyncClient, user_id: str) -> None:
 
 
 async def test_duplicate_sample_is_silently_ignored_not_409(
-    client: AsyncClient, user_id: str
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
+    user_id, headers = authed_user
     payload: dict[str, Any] = {
         "user_id": user_id,
         "ts": "2026-01-02T08:00:00Z",
@@ -37,7 +46,9 @@ async def test_duplicate_sample_is_silently_ignored_not_409(
     assert second.json()["id"] == first_id
     assert second.json()["heart_rate"] == 65.0
 
-    list_resp = await client.get("/api/v1/samples", params={"user_id": user_id, "limit": 200})
+    list_resp = await client.get(
+        "/api/v1/samples", params={"limit": 200}, headers=headers
+    )
     matching = [s for s in list_resp.json() if s["id"] == first_id]
     assert len(matching) == 1
 
@@ -86,8 +97,9 @@ async def test_batch_rejects_over_500(client: AsyncClient, user_id: str) -> None
 
 
 async def test_averages_group_correctly_across_a_day_boundary(
-    client: AsyncClient, user_id: str
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
+    user_id, headers = authed_user
     late_jan1 = await client.post(
         "/api/v1/samples",
         json={"user_id": user_id, "ts": "2026-04-01T23:30:00Z", "heart_rate": 60},
@@ -101,12 +113,8 @@ async def test_averages_group_correctly_across_a_day_boundary(
 
     resp = await client.get(
         "/api/v1/samples/averages",
-        params={
-            "user_id": user_id,
-            "period": "day",
-            "from_date": "2026-04-01",
-            "to_date": "2026-04-02",
-        },
+        params={"period": "day", "from_date": "2026-04-01", "to_date": "2026-04-02"},
+        headers=headers,
     )
     assert resp.status_code == 200
     buckets = resp.json()
@@ -119,18 +127,80 @@ async def test_averages_group_correctly_across_a_day_boundary(
     assert bucket_by_date["2026-04-02"]["count"] == 1
 
 
-async def test_get_and_delete_sample(client: AsyncClient, user_id: str) -> None:
+async def test_get_and_delete_sample(
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
+) -> None:
+    user_id, headers = authed_user
     create_resp = await client.post(
         "/api/v1/samples",
         json={"user_id": user_id, "ts": "2026-01-05T08:00:00Z", "heart_rate": 70},
     )
     sample_id = create_resp.json()["id"]
 
-    get_resp = await client.get(f"/api/v1/samples/{sample_id}")
+    get_resp = await client.get(f"/api/v1/samples/{sample_id}", headers=headers)
     assert get_resp.status_code == 200
 
-    delete_resp = await client.delete(f"/api/v1/samples/{sample_id}")
+    delete_resp = await client.delete(f"/api/v1/samples/{sample_id}", headers=headers)
     assert delete_resp.status_code == 204
 
-    missing_resp = await client.get(f"/api/v1/samples/{sample_id}")
+    missing_resp = await client.get(f"/api/v1/samples/{sample_id}", headers=headers)
     assert missing_resp.status_code == 404
+
+
+async def test_list_samples_unauthenticated_returns_401(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/samples")
+    assert resp.status_code == 401
+
+
+async def test_averages_unauthenticated_returns_401(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/samples/averages", params={"period": "day"})
+    assert resp.status_code == 401
+
+
+async def test_get_sample_unauthenticated_returns_401(
+    client: AsyncClient, user_id: str
+) -> None:
+    create_resp = await client.post(
+        "/api/v1/samples",
+        json={"user_id": user_id, "ts": "2026-01-06T08:00:00Z", "heart_rate": 70},
+    )
+    sample_id = create_resp.json()["id"]
+
+    resp = await client.get(f"/api/v1/samples/{sample_id}")
+    assert resp.status_code == 401
+
+
+async def test_user_b_cannot_read_user_a_sample(
+    client: AsyncClient,
+    make_authed_user: Callable[[], Awaitable[tuple[str, dict[str, str]]]],
+) -> None:
+    user_a, _headers_a = await make_authed_user()
+    _user_b, headers_b = await make_authed_user()
+
+    create_resp = await client.post(
+        "/api/v1/samples",
+        json={"user_id": user_a, "ts": "2026-01-07T08:00:00Z", "heart_rate": 70},
+    )
+    sample_id = create_resp.json()["id"]
+
+    get_resp = await client.get(f"/api/v1/samples/{sample_id}", headers=headers_b)
+    assert get_resp.status_code == 404
+
+    delete_resp = await client.delete(f"/api/v1/samples/{sample_id}", headers=headers_b)
+    assert delete_resp.status_code == 404
+
+
+async def test_list_samples_only_returns_the_authenticated_users_own(
+    client: AsyncClient,
+    make_authed_user: Callable[[], Awaitable[tuple[str, dict[str, str]]]],
+) -> None:
+    user_a, _headers_a = await make_authed_user()
+    _user_b, headers_b = await make_authed_user()
+
+    await client.post(
+        "/api/v1/samples",
+        json={"user_id": user_a, "ts": "2026-01-08T08:00:00Z", "heart_rate": 70},
+    )
+
+    b_samples = (await client.get("/api/v1/samples", headers=headers_b)).json()
+    assert b_samples == []

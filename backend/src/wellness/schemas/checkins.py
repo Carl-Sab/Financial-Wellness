@@ -16,7 +16,6 @@ _READING_FIELDS = (
 
 
 class CheckinCreate(BaseModel):
-    user_id: uuid.UUID
     category_code: str
     valence: ValenceLevel
     checkin_type: str = "pre_transaction"
