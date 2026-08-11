@@ -8,10 +8,11 @@ import "./Questionnaire.css";
 import "./OnboardingBudget.css";
 
 export default function OnboardingBudget() {
-  const { user, refreshBudgetStatus } = useAuth();
+  const { refreshBudgetStatus } = useAuth();
   const navigate = useNavigate();
 
   const [value, setValue] = useState("");
+  const [currency, setCurrency] = useState("LBP");
   const [touched, setTouched] = useState(false);
   const [submitStatus, setSubmitStatus] = useState("idle"); // idle | loading | error
   // Same double-submit guard as Signup/Login/Questionnaire: a ref, because
@@ -19,7 +20,9 @@ export default function OnboardingBudget() {
   // still read "not loading" before either update commits.
   const isSubmittingRef = useRef(false);
 
-  const symbol = currencySymbol(user?.currency);
+  // The budget's own currency, independent of the account's default
+  // currency — a user can set a USD budget even if their account is LBP.
+  const symbol = currencySymbol(currency);
   const numericValue = Number(value);
   const isValid = value.trim() !== "" && Number.isFinite(numericValue) && numericValue > 0;
   const showError = touched && !isValid;
@@ -38,7 +41,7 @@ export default function OnboardingBudget() {
       const response = await apiFetch("/api/v1/onboarding/budget", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monthly_budget: value }),
+        body: JSON.stringify({ monthly_budget: value, currency }),
       });
 
       // 409 means it's already set — e.g. a second tab finished it first.
@@ -79,6 +82,31 @@ export default function OnboardingBudget() {
           <p className="questionnaire__intro">
             We&rsquo;ll flag days where your spending runs past it.
           </p>
+
+          <div className="budget-currency-toggle" role="radiogroup" aria-label="Budget currency">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={currency === "LBP"}
+              className={`budget-currency-toggle__option ${
+                currency === "LBP" ? "budget-currency-toggle__option--selected" : ""
+              }`}
+              onClick={() => setCurrency("LBP")}
+            >
+              LBP
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={currency === "USD"}
+              className={`budget-currency-toggle__option ${
+                currency === "USD" ? "budget-currency-toggle__option--selected" : ""
+              }`}
+              onClick={() => setCurrency("USD")}
+            >
+              USD
+            </button>
+          </div>
 
           <div className="field">
             <label htmlFor="monthly-budget" className="field__label">

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../lib/api";
 import { currencySymbol, formatMoney } from "../lib/currency";
 import CheckinArousalSlider from "./CheckinArousalSlider";
 import CheckinSlider from "./CheckinSlider";
@@ -14,6 +15,7 @@ import {
   VALENCE_QUESTION,
 } from "./checkinItems";
 import "./Signup.css";
+import "./Questionnaire.css";
 import "./Checkin.css";
 
 const SLIDER_DEFAULT = 0.0;
@@ -82,6 +84,7 @@ export default function Checkin() {
   const [sliderValues, setSliderValues] = useState(initialSliderValues);
   const [amount, setAmount] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState("idle"); // idle | loading | error
   // Same double-submit guard used across the app's other forms: a ref,
   // because React batches state updates, so two synchronous taps could
   // both still read "not submitted" before either update commits.
@@ -138,29 +141,45 @@ export default function Checkin() {
     setStageIndex((i) => Math.max(0, i - 1));
   }
 
-  function handleAmountSubmit(event) {
-    event.preventDefault();
+  async function submitTransaction() {
     if (isSubmittingRef.current) return;
     if (!amountValid) {
       setAmountTouched(true);
       return;
     }
     isSubmittingRef.current = true;
+    setSubmitStatus("loading");
 
-    const payload = {
-      ...checkinPayload(),
-      amount: amountNumber,
-      currency: user?.currency ?? null,
-      // The mock shown in stage 2 — real once the API call replaces it.
-      predicted_overspend_probability: MOCK_OVERSPEND_PROBABILITY,
-    };
+    try {
+      // occurred_at is left unset — the server stamps it with the current
+      // time, which is exactly the purchase date/time we want recorded.
+      const response = await apiFetch("/api/v1/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountNumber,
+          currency: user?.currency ?? "LBP",
+          category_code: category,
+        }),
+      });
 
-    // No backend endpoint wired up yet — this is the frontend-only stub.
-    // eslint-disable-next-line no-console
-    console.log("Purchase recorded:", payload);
+      if (!response.ok) {
+        setSubmitStatus("error");
+        return;
+      }
 
-    isSubmittingRef.current = false;
-    setStageIndex(3); // -> success
+      setSubmitStatus("idle");
+      setStageIndex(3); // -> success
+    } catch {
+      setSubmitStatus("error");
+    } finally {
+      isSubmittingRef.current = false;
+    }
+  }
+
+  function handleAmountSubmit(event) {
+    event.preventDefault();
+    submitTransaction();
   }
 
   if (stage === "success") {
@@ -172,7 +191,7 @@ export default function Checkin() {
           </p>
           <h1 className="checkin__success-title">Purchase recorded</h1>
           <p className="checkin__success-body">
-            Logged to the console for now — nothing&rsquo;s sent to the server yet.
+            Saved with today&rsquo;s date — you&rsquo;ll see it in your bank history.
           </p>
           <Button as="link" to="/home" variant="dark">
             Back to home
@@ -351,8 +370,21 @@ export default function Checkin() {
               </div>
             </section>
 
-            <button type="submit" className="btn btn--dark checkin__submit" disabled={!amountValid}>
-              Record purchase
+            {submitStatus === "error" && (
+              <p className="questionnaire__form-error" role="alert">
+                Couldn&rsquo;t reach the server. Nothing you entered was lost.{" "}
+                <button type="button" className="questionnaire__retry" onClick={submitTransaction}>
+                  Try again
+                </button>
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn--dark checkin__submit"
+              disabled={!amountValid || submitStatus === "loading"}
+            >
+              {submitStatus === "loading" ? "Recording…" : "Record purchase"}
             </button>
           </form>
         )}

@@ -3,6 +3,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RedirectIfAuthenticated from "./components/RedirectIfAuthenticated";
 import RequireBudget from "./components/RequireBudget";
 import RequireQuestionnaire from "./components/RequireQuestionnaire";
+import Bank from "./pages/Bank";
 import Checkin from "./pages/Checkin";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
@@ -86,7 +87,7 @@ export default function App() {
         path="/bank"
         element={
           <AppPage>
-            <StubPage title="Bank" />
+            <Bank />
           </AppPage>
         }
       />

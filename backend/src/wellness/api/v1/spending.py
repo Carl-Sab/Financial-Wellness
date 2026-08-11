@@ -3,6 +3,7 @@ spend overview, all windows computed in the user's own timezone (from
 users.timezone), not the server's.
 """
 
+import calendar
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -18,8 +19,13 @@ from wellness.db import get_session
 from wellness.models import BankAccount, BankLedger, Transaction, User, UserGoal
 from wellness.models.enums import LedgerDirection
 from wellness.schemas.spending import SpendingSummary, SpendingWindow
+from wellness.services.currency import USD_TO_LBP, convert, quantize
 
 router = APIRouter(prefix="/spending", tags=["spending"])
+
+# weekly = monthly / 4 flat; daily = monthly / days-in-that-calendar-month
+# (28-31) — both fixed by product decision, not derived from anything else.
+WEEKLY_DIVISOR = Decimal("4")
 
 
 def _resolve_timezone(name: str) -> ZoneInfo:
@@ -50,10 +56,36 @@ def _monthly_window(user_timezone: str) -> tuple[date, datetime, datetime]:
     return month_start_local.date(), month_start_local.astimezone(UTC), now_local.astimezone(UTC)
 
 
+def _converted_amount_expr(display_currency: str):
+    # Converts each row's Transaction.amount from its own Transaction.currency
+    # into display_currency at the fixed LBP/USD rate, so a window's "spent"
+    # is meaningful even when purchases were logged in a mix of currencies.
+    # Any other stored currency value (transactions.currency is a freeform
+    # Text column, not restricted to LBP/USD) falls through unconverted —
+    # the same gap that existed before this conversion was added, not a new
+    # one.
+    if display_currency == "USD":
+        return case(
+            (Transaction.currency == "LBP", Transaction.amount / USD_TO_LBP),
+            else_=Transaction.amount,
+        )
+    if display_currency == "LBP":
+        return case(
+            (Transaction.currency == "USD", Transaction.amount * USD_TO_LBP),
+            else_=Transaction.amount,
+        )
+    return Transaction.amount
+
+
 async def _spent(
-    session: AsyncSession, user_id: object, window_start: datetime, window_end: datetime
+    session: AsyncSession,
+    user_id: object,
+    window_start: datetime,
+    window_end: datetime,
+    display_currency: str,
 ) -> Decimal:
-    query = select(sa_func.coalesce(sa_func.sum(Transaction.amount), 0)).where(
+    amount_expr = _converted_amount_expr(display_currency)
+    query = select(sa_func.coalesce(sa_func.sum(amount_expr), 0)).where(
         Transaction.user_id == user_id,
         Transaction.occurred_at >= window_start,
         Transaction.occurred_at < window_end,
@@ -68,10 +100,10 @@ async def _active_period_goal(
     # category_code IS NULL: "spent" here is always all-categories, so the
     # only goal that can meaningfully supply a target/remaining for it is
     # one that's also all-categories — a category_cap goal wouldn't
-    # correspond to total spend. Never derived by dividing a monthly goal
-    # into a daily/weekly figure — a derived budget that looks user-set is
-    # misleading, so this returns None (not a computed value) whenever no
-    # matching goal exists for that exact period.
+    # correspond to total spend. This only ever returns a goal whose period
+    # column matches exactly — weekly/daily derivation from a monthly goal
+    # happens one level up, in _window_summary, so an explicit weekly/daily
+    # goal (if one exists) always takes priority over a derived figure.
     result = await session.execute(
         select(UserGoal)
         .where(
@@ -86,6 +118,18 @@ async def _active_period_goal(
     return result.scalar_one_or_none()
 
 
+def _derived_target(monthly_target: Decimal, period: str, period_start: date) -> Decimal:
+    """weekly -> monthly/4 flat; daily -> monthly/days-in-period_start's-month.
+    monthly_target must already be converted into the display currency —
+    converting first and dividing (quantizing once) after avoids compounding
+    a 2dp rounding error at a 90,000:1 rate (e.g. rounding a USD/31 division
+    to the cent before converting to LBP can be off by hundreds of LBP)."""
+    if period == "weekly":
+        return quantize(monthly_target / WEEKLY_DIVISOR)
+    days_in_month = calendar.monthrange(period_start.year, period_start.month)[1]
+    return quantize(monthly_target / Decimal(days_in_month))
+
+
 async def _window_summary(
     session: AsyncSession,
     user_id: object,
@@ -94,10 +138,20 @@ async def _window_summary(
     period_end: date,
     window_start: datetime,
     window_end: datetime,
+    display_currency: str,
 ) -> SpendingWindow:
-    spent = await _spent(session, user_id, window_start, window_end)
+    spent = await _spent(session, user_id, window_start, window_end, display_currency)
+
     goal = await _active_period_goal(session, user_id, period)
-    target = goal.target_amount if goal is not None else None
+    target: Decimal | None = None
+    if goal is not None:
+        target = convert(goal.target_amount, goal.currency, display_currency)
+    elif period in ("weekly", "daily"):
+        monthly_goal = await _active_period_goal(session, user_id, "monthly")
+        if monthly_goal is not None:
+            monthly_target = convert(monthly_goal.target_amount, monthly_goal.currency, display_currency)
+            target = _derived_target(monthly_target, period, period_start)
+
     remaining = (target - spent) if target is not None else None
     return SpendingWindow(
         period_start=period_start,
@@ -118,10 +172,24 @@ async def get_spending_summary(
     month_start_local, monthly_start, monthly_end = _monthly_window(current_user.timezone)
 
     daily = await _window_summary(
-        session, current_user.id, "daily", today_local, today_local, daily_start, daily_end
+        session,
+        current_user.id,
+        "daily",
+        today_local,
+        today_local,
+        daily_start,
+        daily_end,
+        current_user.currency,
     )
     weekly = await _window_summary(
-        session, current_user.id, "weekly", week_start_local, today_local, weekly_start, weekly_end
+        session,
+        current_user.id,
+        "weekly",
+        week_start_local,
+        today_local,
+        weekly_start,
+        weekly_end,
+        current_user.currency,
     )
     monthly = await _window_summary(
         session,
@@ -131,6 +199,7 @@ async def get_spending_summary(
         today_local,
         monthly_start,
         monthly_end,
+        current_user.currency,
     )
 
     account_ids_query = select(BankAccount.id).where(BankAccount.user_id == current_user.id)

@@ -8,10 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field
 GoalPeriod = Literal["weekly", "monthly", "daily"]
 
 
+GoalCurrency = Literal["LBP", "USD"]
+
+
 class UserGoalCreate(BaseModel):
     goal_type: str
     category_code: str | None = None
     target_amount: Decimal = Field(gt=0)
+    currency: GoalCurrency = "LBP"
     period: GoalPeriod
     starts_on: date
     ends_on: date | None = None
@@ -22,6 +26,7 @@ class UserGoalUpdate(BaseModel):
     goal_type: str | None = None
     category_code: str | None = None
     target_amount: Decimal | None = Field(default=None, gt=0)
+    currency: GoalCurrency | None = None
     period: GoalPeriod | None = None
     starts_on: date | None = None
     ends_on: date | None = None
@@ -36,6 +41,7 @@ class UserGoalRead(BaseModel):
     goal_type: str
     category_code: str | None
     target_amount: Decimal
+    currency: str
     period: str
     starts_on: date
     ends_on: date | None

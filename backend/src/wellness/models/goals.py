@@ -48,6 +48,9 @@ class UserGoal(Base):
         Text, ForeignKey("categories.code"), nullable=True
     )
     target_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    # 'LBP' | 'USD' — see wellness.services.currency for the fixed conversion
+    # rate used when comparing against transactions in the other currency.
+    currency: Mapped[str] = mapped_column(Text, nullable=False, default="LBP", server_default="LBP")
     # 'weekly' | 'monthly' | 'daily'
     period: Mapped[str] = mapped_column(Text, nullable=False)
     starts_on: Mapped[date] = mapped_column(Date, nullable=False)

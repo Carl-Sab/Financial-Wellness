@@ -52,6 +52,7 @@ async def submit_budget(
         goal_type=MONTHLY_BUDGET_GOAL_TYPE,
         category_code=None,
         target_amount=payload.monthly_budget,
+        currency=payload.currency,
         period="monthly",
         starts_on=date.today(),
         is_active=True,

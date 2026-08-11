@@ -16,3 +16,44 @@
 .budget__input {
   padding-left: 3.25rem;
 }
+
+/* --- Currency toggle (same visual pattern as Checkin's mode toggle) --- */
+
+.budget-currency-toggle {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--color-mist);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+}
+
+.budget-currency-toggle__option {
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.budget-currency-toggle__option:hover {
+  color: var(--color-text);
+}
+
+.budget-currency-toggle__option:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.budget-currency-toggle__option--selected {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+.budget-currency-toggle__option--selected:hover {
+  color: var(--color-ink);
+}

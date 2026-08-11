@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { buildEcgPath } from "../components/landing/ecgPath";
 import { useAuth } from "../context/AuthContext";
+import { useCardData } from "../hooks/useCardData";
 import { apiFetch } from "../lib/api";
 import { formatMoney } from "../lib/currency";
 import "../components/landing/Header.css";
@@ -55,37 +55,6 @@ async function fetchSpendingSummary() {
   return response.json();
 }
 
-// Each card owns its own loading/error/data cycle — one card's fetch
-// failing must never block or blank the other two. loadFn is a stable
-// module-level function (no props/closures to worry about), so `attempt`
-// alone is enough to drive re-fetching on retry.
-function useCardData(loadFn) {
-  const [status, setStatus] = useState("loading"); // loading | error | success
-  const [data, setData] = useState(null);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus("loading");
-    loadFn()
-      .then((result) => {
-        if (cancelled) return;
-        setData(result);
-        setStatus("success");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setStatus("error");
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt]);
-
-  return { status, data, retry: () => setAttempt((a) => a + 1) };
-}
-
 function scrollToCard(id) {
   return (event) => {
     event.preventDefault();
@@ -130,6 +99,46 @@ function StatisticsPreview({ status, data, retry }) {
   );
 }
 
+// One bar for one window (daily/weekly/monthly) — same fill/over-budget
+// math the app has always used for the monthly bar, just parameterized so
+// it can be reused three times instead of hardcoded to one window.
+function SpendingBar({ label, emptyLabel, window, currency }) {
+  const hasTarget = window.target != null && Number(window.target) > 0;
+  const isOverBudget = hasTarget && Number(window.spent) > Number(window.target);
+  const progressPct = hasTarget
+    ? Math.min(100, (Number(window.spent) / Number(window.target)) * 100)
+    : 0;
+
+  return (
+    <div className="bank-preview__window">
+      <div className="bank-preview__window-row">
+        <span>{label}</span>
+        <span>
+          {formatMoney(window.spent, currency)}
+          {hasTarget && <> of {formatMoney(window.target, currency)}</>}
+        </span>
+      </div>
+      {hasTarget ? (
+        <div
+          className="bank-preview__progress"
+          role="progressbar"
+          aria-valuenow={Math.round(progressPct)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${label} budget used`}
+        >
+          <div
+            className={`bank-preview__progress-fill ${isOverBudget ? "bank-preview__progress-fill--over" : ""}`}
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      ) : (
+        <p className="card__empty card__empty--tight">{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
 function BankPreview({ status, data, retry }) {
   if (status === "loading") {
     return (
@@ -146,53 +155,26 @@ function BankPreview({ status, data, retry }) {
   }
 
   const { currency, daily, weekly, monthly, balance } = data;
-  const hasMonthlyTarget = monthly.target != null && Number(monthly.target) > 0;
-  const isOverBudget = hasMonthlyTarget && Number(monthly.spent) > Number(monthly.target);
-  const progressPct = hasMonthlyTarget
-    ? Math.min(100, (Number(monthly.spent) / Number(monthly.target)) * 100)
-    : 0;
 
   return (
     <div className="bank-preview">
       <p className="bank-preview__balance">{formatMoney(balance, currency)}</p>
       <p className="bank-preview__balance-label">Balance</p>
 
-      <div className="bank-preview__monthly">
-        <div className="bank-preview__monthly-row">
-          <span>This month</span>
-          <span>
-            {formatMoney(monthly.spent, currency)}
-            {hasMonthlyTarget && <> of {formatMoney(monthly.target, currency)}</>}
-          </span>
-        </div>
-        {hasMonthlyTarget ? (
-          <div
-            className="bank-preview__progress"
-            role="progressbar"
-            aria-valuenow={Math.round(progressPct)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Monthly budget used"
-          >
-            <div
-              className={`bank-preview__progress-fill ${isOverBudget ? "bank-preview__progress-fill--over" : ""}`}
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        ) : (
-          <p className="card__empty card__empty--tight">No monthly budget set</p>
-        )}
-      </div>
-
-      <div className="bank-preview__figures">
-        <div>
-          <p className="bank-preview__figure-value">{formatMoney(weekly.spent, currency)}</p>
-          <p className="bank-preview__figure-label">This week</p>
-        </div>
-        <div>
-          <p className="bank-preview__figure-value">{formatMoney(daily.spent, currency)}</p>
-          <p className="bank-preview__figure-label">Today</p>
-        </div>
+      <div className="bank-preview__windows">
+        <SpendingBar
+          label="This month"
+          emptyLabel="No monthly budget set"
+          window={monthly}
+          currency={currency}
+        />
+        <SpendingBar
+          label="This week"
+          emptyLabel="No weekly budget set"
+          window={weekly}
+          currency={currency}
+        />
+        <SpendingBar label="Today" emptyLabel="No daily budget set" window={daily} currency={currency} />
       </div>
     </div>
   );

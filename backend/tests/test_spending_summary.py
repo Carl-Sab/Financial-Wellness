@@ -2,9 +2,10 @@
 daily/weekly/monthly spend overview.
 """
 
+import calendar
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
-from decimal import Decimal
+from datetime import UTC, date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
 from httpx import AsyncClient
@@ -70,9 +71,18 @@ async def test_daily_window_uses_the_users_timezone_not_utc(
     assert Decimal(summary_resp.json()["daily"]["spent"]) == Decimal("37.00")
 
 
-async def test_monthly_has_target_and_remaining_daily_and_weekly_are_null(
+def _expected_daily_target(monthly_target: Decimal) -> Decimal:
+    today = date.today()
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    return (monthly_target / Decimal(days_in_month)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+async def test_weekly_and_daily_targets_derive_from_the_monthly_budget(
     client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
+    """Onboarding only ever creates a monthly goal — with no explicit
+    weekly/daily goal, their targets are derived from it: weekly flat by 4,
+    daily by the number of days in the current calendar month."""
     _user_id, headers = authed_user
     budget_resp = await client.post(
         "/api/v1/onboarding/budget", json={"monthly_budget": "2000000"}, headers=headers
@@ -88,29 +98,82 @@ async def test_monthly_has_target_and_remaining_daily_and_weekly_are_null(
 
     summary = (await client.get("/api/v1/spending/summary", headers=headers)).json()
 
-    assert summary["daily"]["target"] is None
-    assert summary["daily"]["remaining"] is None
-    assert summary["weekly"]["target"] is None
-    assert summary["weekly"]["remaining"] is None
+    expected_daily_target = _expected_daily_target(Decimal("2000000"))
+    assert Decimal(summary["daily"]["target"]) == expected_daily_target
+    assert Decimal(summary["daily"]["spent"]) == Decimal("1650000.00")
+    assert Decimal(summary["daily"]["remaining"]) == expected_daily_target - Decimal("1650000.00")
+
+    assert Decimal(summary["weekly"]["target"]) == Decimal("500000.00")
+    assert Decimal(summary["weekly"]["spent"]) == Decimal("1650000.00")
+    assert Decimal(summary["weekly"]["remaining"]) == Decimal("500000.00") - Decimal("1650000.00")
 
     assert Decimal(summary["monthly"]["target"]) == Decimal("2000000")
     assert Decimal(summary["monthly"]["spent"]) == Decimal("1650000.00")
     assert Decimal(summary["monthly"]["remaining"]) == Decimal("350000.00")
 
 
-async def test_daily_and_weekly_do_not_inherit_the_monthly_budget(
+async def test_explicit_period_goal_overrides_the_derived_monthly_figure(
     client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
-    """Onboarding only creates a monthly goal — daily/weekly must stay
-    null, never a value silently derived by dividing the monthly target."""
+    """A weekly/daily goal that actually exists always wins over a figure
+    derived by dividing the monthly budget."""
     _user_id, headers = authed_user
     await client.post(
         "/api/v1/onboarding/budget", json={"monthly_budget": "3000000"}, headers=headers
     )
+    goal_resp = await client.post(
+        "/api/v1/goals",
+        json={
+            "goal_type": "weekly_budget",
+            "target_amount": "999999.00",
+            "period": "weekly",
+            "starts_on": date.today().isoformat(),
+        },
+        headers=headers,
+    )
+    assert goal_resp.status_code == 201, goal_resp.text
 
     summary = (await client.get("/api/v1/spending/summary", headers=headers)).json()
-    assert summary["daily"]["target"] is None
-    assert summary["weekly"]["target"] is None
+    assert Decimal(summary["weekly"]["target"]) == Decimal("999999.00")
+    # No explicit daily goal — still derived from the monthly budget.
+    assert Decimal(summary["daily"]["target"]) == _expected_daily_target(Decimal("3000000"))
+
+
+async def test_usd_budget_converts_lbp_transactions_at_the_fixed_rate(
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
+) -> None:
+    """The account's display currency stays LBP (the default); the budget
+    itself is set in USD. Spending logged in LBP must convert to LBP at the
+    fixed 90,000:1 rate before comparing against the budget."""
+    _user_id, headers = authed_user
+    budget_resp = await client.post(
+        "/api/v1/onboarding/budget",
+        json={"monthly_budget": "100", "currency": "USD"},
+        headers=headers,
+    )
+    assert budget_resp.status_code == 201, budget_resp.text
+
+    txn_resp = await client.post(
+        "/api/v1/transactions",
+        json={"category_code": "groceries", "amount": "4500000.00", "currency": "LBP"},
+        headers=headers,
+    )
+    assert txn_resp.status_code == 201, txn_resp.text
+
+    summary = (await client.get("/api/v1/spending/summary", headers=headers)).json()
+    assert summary["currency"] == "LBP"
+    assert Decimal(summary["monthly"]["target"]) == Decimal("9000000.00")
+    assert Decimal(summary["monthly"]["spent"]) == Decimal("4500000.00")
+    assert Decimal(summary["monthly"]["remaining"]) == Decimal("4500000.00")
+
+    # Regression check: converting $100 -> LBP must happen *before* dividing
+    # into daily/weekly shares, not after — dividing in USD first and
+    # rounding to the cent, then converting at 90,000:1, compounds a tiny
+    # USD rounding error into a large LBP one (e.g. $3.23 vs the true
+    # $3.225806... is only a fraction of a cent off, but times 90,000 that's
+    # off by hundreds of LBP).
+    assert Decimal(summary["weekly"]["target"]) == Decimal("2250000.00")
+    assert Decimal(summary["daily"]["target"]) == _expected_daily_target(Decimal("9000000"))
 
 
 async def test_balance_matches_bank_account_balance_endpoint(
