@@ -10,17 +10,22 @@ from typing import Any, Mapping
 # User/demo inputs: five already-derived neutral-relative CASE features.
 # Each value must be between -3 and 3. Temporal deltas are derived internally.
 AROUSAL_INPUTS = {
+    """I need hear normalized"""
     "mean_hr_z": -3,
-    "hrv_sdnn_z": 3,
-    "mean_scr_z": 1.1,
-    "mean_resp_rate_z": -1,
-    "skin_temp_sd_z": 0.2,
+
+    """sliders"""
+    "hrv_sdnn_z": 3, # here no prob directly from slider -2-->2
+    "mean_scr_z": 1.1,# here no prob
+    "mean_resp_rate_z": -1,# here no prob
+    "skin_temp_sd_z": 0.2,# here no prob
 }
 
 BASE_AROUSAL_FEATURE_NAMES = tuple(AROUSAL_INPUTS)
 
 
 # Reference distribution from the 2,970 emotional CASE training windows.
+
+""" normalize arousal score to z-score for the impulse model. """
 CASE_AROUSAL_MEAN = 5.299964131313131
 CASE_AROUSAL_STD = 1.4570462148483003
 
@@ -29,9 +34,9 @@ CASE_AROUSAL_STD = 1.4570462148483003
 # pipeline predicts and standardizes it directly from AROUSAL_INPUTS.
 IMPULSE_INPUTS = {
     # Signup values
-    "buying_impulsiveness": 2,
-    "hedonic_value": 4.8,
-    "utilitarian_value": 4.1,
+    "buying_impulsiveness": 2, # T from table
+    "hedonic_value": 4.8,#H from table , generated mu/std
+    "utilitarian_value": 4.1,#U from table , generated mu/std
     "normative_evaluation": 3.0,
     "self_control": 2,
     # Situation questions
