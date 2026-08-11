@@ -8,6 +8,10 @@
   /* Error state only — everywhere else stays lime/ink/mist/slate. Needs to
      read as "wrong" against white, so it can't be lime or ink. */
   --color-error: #b3402a;
+  /* "Over budget" accent only (e.g. a spending progress bar past its
+     target) — distinct from --color-error, which means "something broke,"
+     not "you spent too much." */
+  --color-clay: #c4633f;
 
   --color-bg: var(--color-white);
   --color-text: var(--color-ink);

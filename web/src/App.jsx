@@ -9,6 +9,17 @@ import Login from "./pages/Login";
 import OnboardingBudget from "./pages/OnboardingBudget";
 import Questionnaire from "./pages/Questionnaire";
 import Signup from "./pages/Signup";
+import StubPage from "./pages/StubPage";
+
+function AppPage({ children }) {
+  return (
+    <ProtectedRoute>
+      <RequireQuestionnaire>
+        <RequireBudget>{children}</RequireBudget>
+      </RequireQuestionnaire>
+    </ProtectedRoute>
+  );
+}
 
 export default function App() {
   return (
@@ -49,13 +60,33 @@ export default function App() {
       <Route
         path="/home"
         element={
-          <ProtectedRoute>
-            <RequireQuestionnaire>
-              <RequireBudget>
-                <Home />
-              </RequireBudget>
-            </RequireQuestionnaire>
-          </ProtectedRoute>
+          <AppPage>
+            <Home />
+          </AppPage>
+        }
+      />
+      <Route
+        path="/checkin"
+        element={
+          <AppPage>
+            <StubPage title="Check-in" />
+          </AppPage>
+        }
+      />
+      <Route
+        path="/statistics"
+        element={
+          <AppPage>
+            <StubPage title="Statistics" />
+          </AppPage>
+        }
+      />
+      <Route
+        path="/bank"
+        element={
+          <AppPage>
+            <StubPage title="Bank" />
+          </AppPage>
         }
       />
     </Routes>

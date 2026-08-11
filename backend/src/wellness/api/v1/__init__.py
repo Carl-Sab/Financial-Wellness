@@ -13,6 +13,7 @@ from wellness.api.v1 import (
     questionnaire,
     questionnaire_responses,
     samples,
+    spending,
     transactions,
     user_baseline,
     users,
@@ -34,3 +35,4 @@ router.include_router(bank_ledger.router)
 router.include_router(categories.router)
 router.include_router(user_baseline.router)
 router.include_router(arousal_state.router)
+router.include_router(spending.router)

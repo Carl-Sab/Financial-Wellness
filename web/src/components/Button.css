@@ -54,6 +54,14 @@
   border-color: var(--color-ink);
 }
 
+/* outline-offset pushes the ring onto the page background rather than the
+   button's own fill, so it stays visible regardless of variant (lime, ink,
+   or transparent). */
+.btn:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
 .btn:disabled {
   cursor: not-allowed;
   opacity: 0.45;
