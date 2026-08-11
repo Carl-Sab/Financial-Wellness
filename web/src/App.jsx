@@ -3,6 +3,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RedirectIfAuthenticated from "./components/RedirectIfAuthenticated";
 import RequireBudget from "./components/RequireBudget";
 import RequireQuestionnaire from "./components/RequireQuestionnaire";
+import Checkin from "./pages/Checkin";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -69,7 +70,7 @@ export default function App() {
         path="/checkin"
         element={
           <AppPage>
-            <StubPage title="Check-in" />
+            <Checkin />
           </AppPage>
         }
       />
