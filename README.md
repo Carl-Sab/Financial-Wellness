@@ -22,10 +22,13 @@ uv sync
 uv run python prediction_inputs.py
 ```
 
-The arousal inputs are the ten already-derived neutral-relative features expected
-by the CASE model; they are not raw sensor samples. The output includes the CASE
-score, the standardized arousal value passed to the impulse model, the impulse
-calculation, `z_ib_passed`, and the final overspending probability and decision.
+The user supplies five already-derived neutral-relative features between `-3`
+and `3`; they are not raw sensor samples. During warm-up, the pipeline supplies
+zero temporal deltas. If values from 30 seconds earlier are provided through
+`run_pipeline(arousal_inputs_30_seconds_ago=...)`, it calculates real deltas.
+The output includes the CASE score, the standardized arousal value passed to the
+impulse model, the impulse calculation, `z_ib_passed`, and the final overspending
+probability and decision.
 There is deliberately no editable `arousal_z` or `z_ib` field.
 
 ## Import the combined pipeline
@@ -38,6 +41,13 @@ print(result["overspending"]["probability"])
 ```
 
 All three model packages are namespace packages, so the project contains no `__init__.py` files.
+
+## Prototype interaction rule
+
+The runtime uses a prototype arousal-valence interaction coefficient of `0.35`.
+This manually selected rule makes increasing arousal lower predicted risk for
+negative valence and raise predicted risk for neutral or positive valence. It has
+not been refitted or validated against new overspending outcome data.
 
 ## Docker
 

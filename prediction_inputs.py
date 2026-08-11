@@ -3,24 +3,21 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from math import isfinite
+from typing import Any, Mapping
 
 
-# Already-derived, neutral-relative CASE features for the arousal model.
+# User/demo inputs: five already-derived neutral-relative CASE features.
+# Each value must be between -3 and 3. Temporal deltas are derived internally.
 AROUSAL_INPUTS = {
-    "mean_hr_z": -5,
-    "hrv_sdnn_z": 5,
+    "mean_hr_z": -3,
+    "hrv_sdnn_z": 3,
     "mean_scr_z": 1.1,
     "mean_resp_rate_z": -1,
     "skin_temp_sd_z": 0.2,
-
-
-    "mean_hr_z_delta": 0.0,
-    "hrv_sdnn_z_delta": 0.0,
-    "mean_scr_z_delta": 0.0,
-    "mean_resp_rate_z_delta": 0.0,
-    "skin_temp_sd_z_delta": 0.0,
 }
+
+BASE_AROUSAL_FEATURE_NAMES = tuple(AROUSAL_INPUTS)
 
 
 # Reference distribution from the 2,970 emotional CASE training windows.
@@ -31,18 +28,15 @@ CASE_AROUSAL_STD = 1.4570462148483003
 # Inputs for the impulse model. Arousal is intentionally absent because the
 # pipeline predicts and standardizes it directly from AROUSAL_INPUTS.
 IMPULSE_INPUTS = {
-    #signup
+    # Signup values
     "buying_impulsiveness": 2,
     "hedonic_value": 4.8,
     "utilitarian_value": 4.1,
     "normative_evaluation": 3.0,
     "self_control": 2,
-
-
-    #Questions
+    # Situation questions
     "store_category": "Groceries",
-    #slider -2->2 #
-
+    # Slider: -2, -1, 0, 1, or 2
     "valence": 2,
 }
 
@@ -59,23 +53,91 @@ BUDGET_INPUTS = {
 }
 
 
-def run_pipeline() -> dict[str, Any]:
+def _validated_arousal_values(inputs: Mapping[str, float]) -> dict[str, float]:
+    """Validate the five neutral-relative values exposed by the demo."""
+
+    expected = set(BASE_AROUSAL_FEATURE_NAMES)
+    supplied = set(inputs)
+    if supplied != expected:
+        missing = sorted(expected - supplied)
+        extra = sorted(supplied - expected)
+        raise ValueError(f"Invalid arousal inputs: missing={missing}, extra={extra}")
+
+    validated: dict[str, float] = {}
+    for name in BASE_AROUSAL_FEATURE_NAMES:
+        value = inputs[name]
+        if isinstance(value, bool):
+            raise ValueError(f"{name} must be numeric")
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must be numeric") from exc
+        if not isfinite(numeric) or not -3.0 <= numeric <= 3.0:
+            raise ValueError(f"{name} must be finite and between -3 and 3")
+        validated[name] = numeric
+    return validated
+
+
+def complete_arousal_inputs(
+    current: Mapping[str, float],
+    values_30_seconds_ago: Mapping[str, float] | None = None,
+) -> dict[str, float]:
+    """Add model deltas, using zero during the demo's history warm-up."""
+
+    current_values = _validated_arousal_values(current)
+    earlier_values = (
+        None
+        if values_30_seconds_ago is None
+        else _validated_arousal_values(values_30_seconds_ago)
+    )
+    completed = dict(current_values)
+    for name, current_value in current_values.items():
+        previous_value = current_value if earlier_values is None else earlier_values[name]
+        completed[f"{name}_delta"] = current_value - previous_value
+    return completed
+
+
+def normalize_case_arousal(case_score: float) -> float:
+    """Convert the original CASE rating to the impulse model's z-score input."""
+
+    numeric = float(case_score)
+    if not isfinite(numeric):
+        raise ValueError("CASE arousal score must be finite")
+    return (numeric - CASE_AROUSAL_MEAN) / CASE_AROUSAL_STD
+
+
+def run_pipeline(
+    *,
+    arousal_inputs: Mapping[str, float] | None = None,
+    arousal_inputs_30_seconds_ago: Mapping[str, float] | None = None,
+    impulse_inputs: Mapping[str, Any] | None = None,
+    budget_inputs: Mapping[str, float] | None = None,
+) -> dict[str, Any]:
     """Run arousal, impulse, and overspending prediction in sequence."""
 
     from eurisko_arousal.trained_model import model as arousal_model
     from eurisko_impulse.trained_model import NORMALIZATION, model as impulse_model
     from eurisko_overspending.trained_model import model as overspending_model
 
-    arousal_score = arousal_model.predict(AROUSAL_INPUTS)
-    arousal_z = (arousal_score - CASE_AROUSAL_MEAN) / CASE_AROUSAL_STD
+    complete_features = complete_arousal_inputs(
+        AROUSAL_INPUTS if arousal_inputs is None else arousal_inputs,
+        arousal_inputs_30_seconds_ago,
+    )
+    selected_impulse_inputs = dict(
+        IMPULSE_INPUTS if impulse_inputs is None else impulse_inputs
+    )
+    selected_budget_inputs = dict(BUDGET_INPUTS if budget_inputs is None else budget_inputs)
+
+    arousal_score = arousal_model.predict(complete_features)
+    arousal_z = normalize_case_arousal(arousal_score)
     impulse_prediction = impulse_model.predict(
         normalization=NORMALIZATION,
         arousal_z=arousal_z,
-        **IMPULSE_INPUTS,
+        **selected_impulse_inputs,
     )
     overspending_prediction = overspending_model.predict(
         z_ib=impulse_prediction.z_ib,
-        **BUDGET_INPUTS,
+        **selected_budget_inputs,
     )
 
     if overspending_prediction.z_ib != impulse_prediction.z_ib:
@@ -85,6 +147,7 @@ def run_pipeline() -> dict[str, Any]:
         "arousal": {
             "case_score": arousal_score,
             "arousal_z_passed": arousal_z,
+            "history_available": arousal_inputs_30_seconds_ago is not None,
         },
         "z_ib_passed": impulse_prediction.z_ib,
         "impulse": impulse_prediction.as_dict(),
