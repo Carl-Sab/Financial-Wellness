@@ -3,8 +3,9 @@ import Button from "../components/Button";
 import { buildEcgPath } from "../components/landing/ecgPath";
 import { useAuth } from "../context/AuthContext";
 import { useCardData } from "../hooks/useCardData";
+import { useDisplayCurrency } from "../hooks/useDisplayCurrency";
 import { apiFetch } from "../lib/api";
-import { formatMoney } from "../lib/currency";
+import { convertAmount, formatMoney } from "../lib/currency";
 import "../components/landing/Header.css";
 import "./Home.css";
 
@@ -55,13 +56,6 @@ async function fetchSpendingSummary() {
   return response.json();
 }
 
-function scrollToCard(id) {
-  return (event) => {
-    event.preventDefault();
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-}
-
 function CardError({ onRetry }) {
   return (
     <div className="card__error" role="alert">
@@ -102,20 +96,21 @@ function StatisticsPreview({ status, data, retry }) {
 // One bar for one window (daily/weekly/monthly) — same fill/over-budget
 // math the app has always used for the monthly bar, just parameterized so
 // it can be reused three times instead of hardcoded to one window.
-function SpendingBar({ label, emptyLabel, window, currency }) {
-  const hasTarget = window.target != null && Number(window.target) > 0;
-  const isOverBudget = hasTarget && Number(window.spent) > Number(window.target);
-  const progressPct = hasTarget
-    ? Math.min(100, (Number(window.spent) / Number(window.target)) * 100)
-    : 0;
+function SpendingBar({ label, emptyLabel, window, sourceCurrency, displayCurrency }) {
+  const spent = convertAmount(window.spent, sourceCurrency, displayCurrency);
+  const target =
+    window.target != null ? convertAmount(window.target, sourceCurrency, displayCurrency) : null;
+  const hasTarget = target != null && target > 0;
+  const isOverBudget = hasTarget && spent > target;
+  const progressPct = hasTarget ? Math.min(100, (spent / target) * 100) : 0;
 
   return (
     <div className="bank-preview__window">
       <div className="bank-preview__window-row">
         <span>{label}</span>
         <span>
-          {formatMoney(window.spent, currency)}
-          {hasTarget && <> of {formatMoney(window.target, currency)}</>}
+          {formatMoney(spent, displayCurrency)}
+          {hasTarget && <> of {formatMoney(target, displayCurrency)}</>}
         </span>
       </div>
       {hasTarget ? (
@@ -139,7 +134,28 @@ function SpendingBar({ label, emptyLabel, window, currency }) {
   );
 }
 
-function BankPreview({ status, data, retry }) {
+function CurrencyToggle({ value, onChange }) {
+  return (
+    <div className="bank-preview__currency-toggle" role="radiogroup" aria-label="Display currency">
+      {["LBP", "USD"].map((code) => (
+        <button
+          key={code}
+          type="button"
+          role="radio"
+          aria-checked={value === code}
+          className={`bank-preview__currency-toggle-option ${
+            value === code ? "bank-preview__currency-toggle-option--selected" : ""
+          }`}
+          onClick={() => onChange(code)}
+        >
+          {code === "USD" ? "$" : "L.L."}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BankPreview({ status, data, retry, displayCurrency, onDisplayCurrencyChange }) {
   if (status === "loading") {
     return (
       <div className="card__skeleton" aria-hidden="true">
@@ -155,10 +171,13 @@ function BankPreview({ status, data, retry }) {
   }
 
   const { currency, daily, weekly, monthly, balance } = data;
+  const displayedBalance = convertAmount(balance, currency, displayCurrency);
 
   return (
     <div className="bank-preview">
-      <p className="bank-preview__balance">{formatMoney(balance, currency)}</p>
+      <CurrencyToggle value={displayCurrency} onChange={onDisplayCurrencyChange} />
+
+      <p className="bank-preview__balance">{formatMoney(displayedBalance, displayCurrency)}</p>
       <p className="bank-preview__balance-label">Balance</p>
 
       <div className="bank-preview__windows">
@@ -166,15 +185,23 @@ function BankPreview({ status, data, retry }) {
           label="This month"
           emptyLabel="No monthly budget set"
           window={monthly}
-          currency={currency}
+          sourceCurrency={currency}
+          displayCurrency={displayCurrency}
         />
         <SpendingBar
           label="This week"
           emptyLabel="No weekly budget set"
           window={weekly}
-          currency={currency}
+          sourceCurrency={currency}
+          displayCurrency={displayCurrency}
         />
-        <SpendingBar label="Today" emptyLabel="No daily budget set" window={daily} currency={currency} />
+        <SpendingBar
+          label="Today"
+          emptyLabel="No daily budget set"
+          window={daily}
+          sourceCurrency={currency}
+          displayCurrency={displayCurrency}
+        />
       </div>
     </div>
   );
@@ -185,6 +212,7 @@ export default function Home() {
   const navigate = useNavigate();
   const statistics = useCardData(fetchWeeklyHeartRateAverage);
   const bank = useCardData(fetchSpendingSummary);
+  const [displayCurrency, setDisplayCurrency] = useDisplayCurrency();
 
   const firstName = user?.full_name?.trim().split(/\s+/)[0] ?? "";
 
@@ -200,19 +228,6 @@ export default function Home() {
           <span className="header__logo">Financial&nbsp;Wellness</span>
 
           <nav className="header__nav" aria-label="Primary">
-            <a href="#checkin-card" className="header__link" onClick={scrollToCard("checkin-card")}>
-              Check in
-            </a>
-            <a
-              href="#statistics-card"
-              className="header__link"
-              onClick={scrollToCard("statistics-card")}
-            >
-              Statistics
-            </a>
-            <a href="#bank-card" className="header__link" onClick={scrollToCard("bank-card")}>
-              Bank
-            </a>
             <Button variant="secondary" className="header__login" onClick={handleLogout}>
               Log out
             </Button>
@@ -255,7 +270,11 @@ export default function Home() {
           <section id="bank-card" className="card">
             <BankMark />
             <h2 className="card__title">Bank</h2>
-            <BankPreview {...bank} />
+            <BankPreview
+              {...bank}
+              displayCurrency={displayCurrency}
+              onDisplayCurrencyChange={setDisplayCurrency}
+            />
             <Button as="link" to="/bank" variant="dark" className="card__cta">
               View bank
             </Button>

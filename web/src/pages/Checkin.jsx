@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
-import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { currencySymbol, formatMoney } from "../lib/currency";
 import CheckinArousalSlider from "./CheckinArousalSlider";
@@ -72,7 +71,6 @@ function initialSliderValues() {
 const STAGES = ["form", "prediction", "amount", "success"];
 
 export default function Checkin() {
-  const { user } = useAuth();
   const [stageIndex, setStageIndex] = useState(0);
   const [category, setCategory] = useState(null);
   const [valenceIndex, setValenceIndex] = useState(null);
@@ -84,6 +82,10 @@ export default function Checkin() {
   const [sliderValues, setSliderValues] = useState(initialSliderValues);
   const [amount, setAmount] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
+  // Independent of the account's default currency (users.currency) — same
+  // pattern as the onboarding budget's own LBP/USD toggle: a purchase can
+  // be paid in either, regardless of what the account defaults to.
+  const [currency, setCurrency] = useState("LBP");
   const [submitStatus, setSubmitStatus] = useState("idle"); // idle | loading | error
   // Same double-submit guard used across the app's other forms: a ref,
   // because React batches state updates, so two synchronous taps could
@@ -98,30 +100,6 @@ export default function Checkin() {
   function handleModeChange(nextMode) {
     setMode(nextMode);
     storeMode(nextMode);
-  }
-
-  function checkinPayload() {
-    const valence = VALENCE_LEVELS[valenceIndex];
-    // Two families of fields in one payload, deliberately not merged into
-    // one name each: category_code/valence are what the checkins table
-    // needs; store_category/valence_z/perceived_*(or perceived_arousal)
-    // are the field names the AI scoring pipeline expects. Same two
-    // answers (category, valence) feed both; the arousal reading only
-    // feeds one.
-    //
-    // checkin_mode tells the backend whether it's getting one combined
-    // value (quick) or the four separate PDF sliders (detailed) — only
-    // the active mode's fields are sent, not both, since the mode not
-    // shown wasn't actually answered by the user this time.
-    return {
-      category_code: category,
-      valence: valence.valence,
-
-      store_category: category,
-      valence_z: valence.valence_z,
-      checkin_mode: mode,
-      ...(mode === "quick" ? { perceived_arousal: quickArousal } : sliderValues),
-    };
   }
 
   function handleCheckinSubmit(event) {
@@ -158,7 +136,7 @@ export default function Checkin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: amountNumber,
-          currency: user?.currency ?? "LBP",
+          currency,
           category_code: category,
         }),
       });
@@ -336,13 +314,35 @@ export default function Checkin() {
           <form onSubmit={handleAmountSubmit} noValidate>
             <section className="checkin__section">
               <h2 className="checkin__question">How much is the purchase?</h2>
+
+              <div className="checkin-mode-toggle" role="radiogroup" aria-label="Currency">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={currency === "LBP"}
+                  className={`checkin-mode-toggle__option ${currency === "LBP" ? "checkin-mode-toggle__option--selected" : ""}`}
+                  onClick={() => setCurrency("LBP")}
+                >
+                  LBP
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={currency === "USD"}
+                  className={`checkin-mode-toggle__option ${currency === "USD" ? "checkin-mode-toggle__option--selected" : ""}`}
+                  onClick={() => setCurrency("USD")}
+                >
+                  USD
+                </button>
+              </div>
+
               <div className="field">
                 <label htmlFor="checkin-amount" className="field__label">
                   Amount
                 </label>
                 <div className="checkin-amount__wrap">
                   <span className="checkin-amount__symbol" aria-hidden="true">
-                    {currencySymbol(user?.currency)}
+                    {currencySymbol(currency)}
                   </span>
                   <input
                     id="checkin-amount"
@@ -364,7 +364,7 @@ export default function Checkin() {
                 </div>
                 {amountTouched && !amountValid && (
                   <p id="checkin-amount-error" className="field__error" role="alert">
-                    Enter an amount greater than {formatMoney(0, user?.currency)}
+                    Enter an amount greater than {formatMoney(0, currency)}
                   </p>
                 )}
               </div>

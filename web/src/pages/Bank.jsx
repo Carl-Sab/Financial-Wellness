@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCardData } from "../hooks/useCardData";
+import { useDisplayCurrency } from "../hooks/useDisplayCurrency";
 import { apiFetch } from "../lib/api";
-import { formatMoney } from "../lib/currency";
+import { convertAmount, formatMoney } from "../lib/currency";
 import { CATEGORIES } from "./checkinItems";
 import "./Bank.css";
 
@@ -31,6 +32,7 @@ export default function Bank() {
   const [morePages, setMorePages] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState(false);
+  const [displayCurrency, setDisplayCurrency] = useDisplayCurrency();
 
   const transactions = status === "success" ? [...firstPage, ...morePages.flat()] : [];
   const lastPage = morePages.length > 0 ? morePages[morePages.length - 1] : firstPage;
@@ -62,7 +64,25 @@ export default function Bank() {
       </div>
 
       <div className="bank-page__content">
-        <h1 className="bank-page__title">Bank</h1>
+        <div className="bank-page__header-row">
+          <h1 className="bank-page__title">Bank</h1>
+          <div className="bank-page__currency-toggle" role="radiogroup" aria-label="Display currency">
+            {["LBP", "USD"].map((code) => (
+              <button
+                key={code}
+                type="button"
+                role="radio"
+                aria-checked={displayCurrency === code}
+                className={`bank-page__currency-toggle-option ${
+                  displayCurrency === code ? "bank-page__currency-toggle-option--selected" : ""
+                }`}
+                onClick={() => setDisplayCurrency(code)}
+              >
+                {code === "USD" ? "$" : "L.L."}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {status === "loading" && (
           <div className="bank-page__skeleton" aria-hidden="true">
@@ -100,7 +120,10 @@ export default function Bank() {
                   </div>
                   <div className="bank-page__row-side">
                     <span className="bank-page__row-amount">
-                      {formatMoney(tx.amount, tx.currency)}
+                      {formatMoney(
+                        convertAmount(tx.amount, tx.currency, displayCurrency),
+                        displayCurrency
+                      )}
                     </span>
                     <span className="bank-page__row-date">{formatDate(tx.occurred_at)}</span>
                   </div>

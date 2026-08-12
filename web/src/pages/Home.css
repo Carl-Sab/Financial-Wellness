@@ -5,32 +5,6 @@
   background: var(--color-mist);
 }
 
-/* Home's header carries 3 nav links + a Log out button — one more item
-   than the landing header's, which needs a tighter fit at narrow widths
-   than Header.css's own breakpoint (tuned for 2 items) provides. */
-@media (max-width: 480px) {
-  .home .header__inner {
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
-  }
-
-  .home .header__logo {
-    font-size: var(--text-sm);
-  }
-
-  .home .header__nav {
-    gap: var(--space-1);
-  }
-
-  .home .header__link {
-    font-size: var(--text-xs);
-  }
-
-  .home .header__login {
-    padding: 0.4rem 0.6rem;
-  }
-}
-
 .home__content {
   max-width: var(--content-width);
   margin: 0 auto;
@@ -340,6 +314,45 @@
 }
 
 /* --- Bank card --- */
+
+.bank-preview__currency-toggle {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--color-mist);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+}
+
+.bank-preview__currency-toggle-option {
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.bank-preview__currency-toggle-option:hover {
+  color: var(--color-text);
+}
+
+.bank-preview__currency-toggle-option:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.bank-preview__currency-toggle-option--selected {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+.bank-preview__currency-toggle-option--selected:hover {
+  color: var(--color-ink);
+}
 
 .bank-preview__balance {
   font-family: var(--font-display);

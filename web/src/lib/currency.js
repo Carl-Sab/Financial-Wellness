@@ -20,3 +20,17 @@ export function formatMoney(amount, currencyCode) {
   });
   return `${currencySymbol(currencyCode)}${formatted}`;
 }
+
+// Fixed display-only rate, matching the backend's
+// wellness.services.currency.USD_TO_LBP exactly — used for the LBP/$
+// view toggle, never for anything submitted back to the server.
+export const USD_TO_LBP = 90000;
+
+export function convertAmount(amount, fromCurrency, toCurrency) {
+  const value = Number(amount);
+  if (fromCurrency === toCurrency) return value;
+  if (fromCurrency === "USD" && toCurrency === "LBP") return value * USD_TO_LBP;
+  if (fromCurrency === "LBP" && toCurrency === "USD") return value / USD_TO_LBP;
+  // Unsupported pair (e.g. EUR/GBP) — display unconverted rather than throw.
+  return value;
+}
