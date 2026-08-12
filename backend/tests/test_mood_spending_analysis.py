@@ -243,6 +243,39 @@ async def test_unpleasant_and_high_arousal_lands_in_stressed_only(
     assert _bucket(body, "negative")["transaction_count"] == 0
 
 
+async def test_usd_goal_and_lbp_transaction_convert_to_a_common_currency(
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
+) -> None:
+    """The account stays LBP (the default); the monthly budget is set in
+    USD and the transaction is logged in USD too, on the other side of the
+    same 90,000:1 rate — both must land in LBP terms in the response, not
+    be summed/compared as if they were the same number in different units."""
+    _user_id, headers = authed_user
+    await client.post(
+        "/api/v1/goals",
+        json={
+            "goal_type": "monthly_budget",
+            "target_amount": "100",
+            "currency": "USD",
+            "period": "monthly",
+            "starts_on": TODAY.isoformat(),
+        },
+        headers=headers,
+    )
+    await _create_transaction(client, headers, amount="50", currency="USD")
+
+    body = (await _mood_spending(client, headers)).json()
+    assert body["currency"] == "LBP"
+    assert body["daily_budget"]["source"] == "goal_monthly"
+    # $100/month -> $100 * 90,000 / 30 = 300,000 LBP/day
+    assert Decimal(body["daily_budget"]["amount"]) == Decimal("300000.00")
+
+    unclassified = _bucket(body, "unclassified")
+    assert unclassified["transaction_count"] == 1
+    # $50 -> 4,500,000 LBP
+    assert unclassified["total_amount"] == Decimal("4500000.00")
+
+
 async def test_reconciliation_all_buckets_plus_excluded_equal_total(
     client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:

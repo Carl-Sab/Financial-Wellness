@@ -93,5 +93,5 @@ async def get_mood_spending(
     if from_date > to_date:
         raise HTTPException(status_code=422, detail="from_date must not be after to_date")
     return await get_mood_spending_analysis(
-        session, current_user.id, from_date, to_date, granularity
+        session, current_user.id, from_date, to_date, granularity, current_user.currency
     )

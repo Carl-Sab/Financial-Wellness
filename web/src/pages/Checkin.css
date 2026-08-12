@@ -51,12 +51,6 @@
   margin-bottom: var(--space-7);
 }
 
-.checkin__section--sliders {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
 .checkin__question {
   font-size: var(--text-base);
   font-weight: 600;
@@ -185,131 +179,38 @@
   color: var(--color-ink);
 }
 
-/* --- Sliders --- */
+/* --- Physiological readings (Quick/Detailed) --- */
 
-.checkin-slider__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
-}
-
-.checkin-slider__question {
-  font-size: var(--text-base);
-  font-weight: 600;
-  line-height: var(--leading-snug);
-}
-
-.checkin-slider__value {
-  flex: 0 0 auto;
-  font-family: var(--font-display);
-  font-size: var(--text-md);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-ink);
-}
-
-.checkin-slider__input {
-  width: 100%;
-  height: 1.5rem;
-  margin: var(--space-2) 0;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.checkin-slider__input::-webkit-slider-runnable-track {
-  height: 4px;
-  background: var(--color-hairline);
-  border-radius: 999px;
-}
-
-.checkin-slider__input::-moz-range-track {
-  height: 4px;
-  background: var(--color-hairline);
-  border-radius: 999px;
-}
-
-.checkin-slider__input::-webkit-slider-thumb {
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  margin-top: -9px;
-  border-radius: 50%;
-  background: var(--color-lime);
-  border: 1.5px solid var(--color-ink);
-}
-
-.checkin-slider__input::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--color-lime);
-  border: 1.5px solid var(--color-ink);
-}
-
-.checkin-slider__input:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--color-ink);
-  outline-offset: 2px;
-}
-
-.checkin-slider__input:focus-visible::-moz-range-thumb {
-  outline: 2px solid var(--color-ink);
-  outline-offset: 2px;
-}
-
-.checkin-slider__anchors {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
+.checkin__hint {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-5);
 }
 
-.checkin-slider__anchors span {
-  flex: 1;
-}
-
-.checkin-slider__anchors span:first-child {
-  text-align: left;
-}
-
-.checkin-slider__anchor-center {
-  text-align: center;
-}
-
-.checkin-slider__anchors span:last-child {
-  text-align: right;
-}
-
-/* --- Quick mode's arousal slider: all five stops labeled, not just the
-   three anchors the detailed sliders use. --- */
-
-.checkin-arousal__ticks {
+.checkin__readings {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
-.checkin-arousal__tick {
-  flex: 1;
-  text-align: center;
+.checkin-reading__wrap {
+  position: relative;
 }
 
-.checkin-arousal__tick:first-child {
-  text-align: left;
+.checkin-reading__input {
+  padding-right: 3.25rem;
 }
 
-.checkin-arousal__tick:last-child {
-  text-align: right;
-}
-
-.checkin-arousal__tick--active {
-  color: var(--color-ink);
+.checkin-reading__unit {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  font-size: var(--text-sm);
   font-weight: 600;
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 /* --- Stage 2: prediction box --- */

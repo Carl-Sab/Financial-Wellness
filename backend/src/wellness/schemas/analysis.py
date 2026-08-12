@@ -44,3 +44,4 @@ class MoodSpendingPeriod(BaseModel):
 class MoodSpendingResponse(BaseModel):
     daily_budget: DailyBudget
     periods: list[MoodSpendingPeriod]
+    currency: str

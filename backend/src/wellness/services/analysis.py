@@ -36,16 +36,20 @@ from wellness.schemas.analysis import (
     MoodSpendingPeriod,
     MoodSpendingResponse,
 )
+from wellness.services.currency import convert, converted_amount_expr
 
 _MOOD_NAMES = ("stressed", "positive", "negative", "neutral", "unclassified")
 _DAYS_PER_MONTH = Decimal("30")
 
 
 async def _resolve_daily_budget(
-    session: AsyncSession, user_id: uuid.UUID
+    session: AsyncSession, user_id: uuid.UUID, display_currency: str
 ) -> tuple[Decimal | None, str]:
     """Priority order: active daily goal -> active monthly goal / 30 ->
-    financial_profile.avg_monthly_spend / 30 -> none.
+    financial_profile.avg_monthly_spend / 30 -> none. Whatever source wins,
+    its amount is converted into display_currency before being returned —
+    a goal or profile can be denominated in a different currency than the
+    transactions it's compared against.
 
     When more than one active goal matches a period, a whole-budget goal
     (category_code IS NULL) is preferred over a category-specific one, then
@@ -64,7 +68,7 @@ async def _resolve_daily_budget(
         )
     ).scalar_one_or_none()
     if daily_goal is not None:
-        return daily_goal.target_amount, "goal_daily"
+        return convert(daily_goal.target_amount, daily_goal.currency, display_currency), "goal_daily"
 
     monthly_goal = (
         await session.execute(
@@ -79,7 +83,8 @@ async def _resolve_daily_budget(
         )
     ).scalar_one_or_none()
     if monthly_goal is not None:
-        return monthly_goal.target_amount / _DAYS_PER_MONTH, "goal_monthly"
+        monthly_target = convert(monthly_goal.target_amount, monthly_goal.currency, display_currency)
+        return monthly_target / _DAYS_PER_MONTH, "goal_monthly"
 
     profile = (
         await session.execute(
@@ -89,7 +94,8 @@ async def _resolve_daily_budget(
         )
     ).scalar_one_or_none()
     if profile is not None and profile.avg_monthly_spend is not None:
-        return profile.avg_monthly_spend / _DAYS_PER_MONTH, "profile"
+        monthly_spend = convert(profile.avg_monthly_spend, profile.currency, display_currency)
+        return monthly_spend / _DAYS_PER_MONTH, "profile"
 
     return None, "none"
 
@@ -144,19 +150,26 @@ async def get_mood_spending_analysis(
     from_date: date,
     to_date: date,
     granularity: str,
+    display_currency: str,
 ) -> MoodSpendingResponse:
-    budget_amount, budget_source = await _resolve_daily_budget(session, user_id)
+    budget_amount, budget_source = await _resolve_daily_budget(session, user_id, display_currency)
 
     if budget_amount is None:
         return MoodSpendingResponse(
-            daily_budget=DailyBudget(amount=None, source=budget_source), periods=[]
+            daily_budget=DailyBudget(amount=None, source=budget_source),
+            periods=[],
+            currency=display_currency,
         )
+
+    # Amounts convert to display_currency before summing/comparing, since a
+    # user's transactions can be logged in a mix of LBP and USD.
+    converted_amount = converted_amount_expr(Transaction.amount, Transaction.currency, display_currency)
 
     # Cumulative same-day spend, in transaction order — the window function
     # the task calls for, not a Python loop. ROWS (not the default RANGE)
     # frame + an `id` tiebreak keeps this well-defined even when two
     # transactions share an occurred_at timestamp.
-    running_total = func.sum(Transaction.amount).over(
+    running_total = func.sum(converted_amount).over(
         partition_by=(Transaction.user_id, func.date_trunc("day", Transaction.occurred_at)),
         order_by=(Transaction.occurred_at, Transaction.id),
         rows=(None, 0),
@@ -164,7 +177,7 @@ async def get_mood_spending_analysis(
 
     stmt = (
         select(
-            Transaction.amount,
+            converted_amount,
             Transaction.occurred_at,
             Transaction.checkin_id,
             Checkin.valence,
@@ -222,4 +235,5 @@ async def get_mood_spending_analysis(
     return MoodSpendingResponse(
         daily_budget=DailyBudget(amount=budget_amount, source=budget_source),
         periods=period_results,
+        currency=display_currency,
     )

@@ -1,0 +1,471 @@
+.statistics {
+  min-height: 100vh;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.statistics__topbar {
+  padding: var(--space-4) var(--content-pad);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.statistics__back {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.statistics__back:hover {
+  color: var(--color-text);
+}
+
+.statistics__content {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--content-pad) var(--space-9);
+}
+
+.statistics__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.statistics__title {
+  font-size: var(--text-xl);
+  margin-bottom: 0;
+}
+
+/* --- Currency toggle (same pattern as Home/Bank) --- */
+
+.statistics__currency-toggle {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--color-mist);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.statistics__currency-toggle-option {
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.statistics__currency-toggle-option:hover {
+  color: var(--color-text);
+}
+
+.statistics__currency-toggle-option:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.statistics__currency-toggle-option--selected {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+/* --- States --- */
+
+.statistics__empty {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.statistics__error p {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  margin-bottom: var(--space-2);
+}
+
+.statistics__retry {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-error);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.statistics__retry:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.statistics__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.statistics__skeleton-row {
+  display: block;
+  height: 2.5rem;
+  background: var(--color-mist);
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .statistics__skeleton-row {
+    animation: statistics-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statistics__skeleton-row {
+    opacity: 0.6;
+  }
+}
+
+@keyframes statistics-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.statistics__budget-line {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-7);
+}
+
+.statistics__section {
+  margin-bottom: var(--space-8);
+}
+
+.statistics__section-title {
+  font-size: var(--text-md);
+  margin-bottom: var(--space-2);
+}
+
+.statistics__section-body {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-5);
+}
+
+/* --- Mood colors — validated with the dataviz skill's palette checker
+   (adjacent-pair CVD + normal-vision floor) against --color-mist as the
+   chart surface. Fixed order, never cycled or reused for other meaning. --- */
+
+.mood-chart {
+  --mood-unclassified: #2a78d6;
+  --mood-stressed: #eb6834;
+  --mood-positive: #1baf7a;
+  --mood-neutral: #eda100;
+  --mood-negative: #e87ba4;
+
+  /* Diverging pair (polarity, not identity) for the correlation table's r
+     sign — the dataviz skill's documented blue/red diverging pair. */
+  --corr-positive: #2a78d6;
+  --corr-negative: #e34948;
+}
+
+/* --- Chart 1: spend by mood, stacked bar per week --- */
+
+.mood-stack {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  height: 200px;
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.mood-stack__col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.mood-stack__total {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+  white-space: nowrap;
+}
+
+.mood-stack__bar {
+  width: 100%;
+  max-width: 40px;
+  flex: 1;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 4px 4px 0 0;
+  overflow: hidden;
+}
+
+.mood-stack__segment {
+  width: 100%;
+  border-bottom: 2px solid var(--color-white);
+}
+
+.mood-stack__segment:first-child {
+  border-bottom: none;
+}
+
+.mood-stack__date {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+
+/* --- Legend / table-view relief for the low-contrast fills above --- */
+
+.mood-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mood-legend__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.mood-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.mood-legend__label {
+  font-weight: 600;
+  width: 6.5rem;
+  flex-shrink: 0;
+}
+
+.mood-legend__count {
+  color: var(--color-text-muted);
+  flex: 1;
+}
+
+.mood-legend__amount {
+  font-weight: 600;
+}
+
+.mood-legend__share {
+  color: var(--color-text-muted);
+  width: 3rem;
+  text-align: right;
+}
+
+/* --- Chart 2: overspend rate per mood --- */
+
+.overspend-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.overspend-chart__row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 5.5rem;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.overspend-chart__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.overspend-chart__track {
+  height: 12px;
+  background: var(--color-mist);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.overspend-chart__fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .overspend-chart__fill {
+    transition: width 0.3s var(--ease-out);
+  }
+}
+
+.overspend-chart__value {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.statistics__row-error {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
+
+/* --- Correlation table --- */
+
+.correlation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-5);
+}
+
+.correlation-table th {
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: 0 var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.correlation-table td {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.correlation-table__r {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.correlation-table__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.correlation-table__sig {
+  color: var(--color-text-muted);
+}
+
+/* --- Matplotlib plots (server-rendered PNGs) --- */
+
+.correlation-plots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.correlation-plots__img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+}
+
+/* --- AI report --- */
+
+.ai-report__generate {
+  background: var(--color-ink);
+  color: var(--color-lime);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-5);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-report__generate:hover {
+  opacity: 0.9;
+}
+
+.ai-report__generate:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ai-report__content {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--space-5);
+}
+
+.ai-report__content :first-child {
+  margin-top: 0;
+}
+
+.ai-report__content h1,
+.ai-report__content h2,
+.ai-report__content h3 {
+  font-family: var(--font-display);
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-2);
+}
+
+.ai-report__content p,
+.ai-report__content ul,
+.ai-report__content ol {
+  margin-top: 0;
+  margin-bottom: var(--space-3);
+}
+
+.ai-report__content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-3);
+}
+
+.ai-report__content th,
+.ai-report__content td {
+  text-align: left;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.ai-report__content code {
+  background: var(--color-mist);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+
+@media (min-width: 720px) {
+  .correlation-plots {
+    flex-direction: row;
+  }
+}

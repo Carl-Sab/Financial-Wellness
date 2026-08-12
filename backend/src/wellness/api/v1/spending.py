@@ -19,7 +19,7 @@ from wellness.db import get_session
 from wellness.models import BankAccount, BankLedger, Transaction, User, UserGoal
 from wellness.models.enums import LedgerDirection
 from wellness.schemas.spending import SpendingSummary, SpendingWindow
-from wellness.services.currency import USD_TO_LBP, convert, quantize
+from wellness.services.currency import convert, converted_amount_expr, quantize
 
 router = APIRouter(prefix="/spending", tags=["spending"])
 
@@ -56,27 +56,6 @@ def _monthly_window(user_timezone: str) -> tuple[date, datetime, datetime]:
     return month_start_local.date(), month_start_local.astimezone(UTC), now_local.astimezone(UTC)
 
 
-def _converted_amount_expr(display_currency: str):
-    # Converts each row's Transaction.amount from its own Transaction.currency
-    # into display_currency at the fixed LBP/USD rate, so a window's "spent"
-    # is meaningful even when purchases were logged in a mix of currencies.
-    # Any other stored currency value (transactions.currency is a freeform
-    # Text column, not restricted to LBP/USD) falls through unconverted —
-    # the same gap that existed before this conversion was added, not a new
-    # one.
-    if display_currency == "USD":
-        return case(
-            (Transaction.currency == "LBP", Transaction.amount / USD_TO_LBP),
-            else_=Transaction.amount,
-        )
-    if display_currency == "LBP":
-        return case(
-            (Transaction.currency == "USD", Transaction.amount * USD_TO_LBP),
-            else_=Transaction.amount,
-        )
-    return Transaction.amount
-
-
 async def _spent(
     session: AsyncSession,
     user_id: object,
@@ -84,7 +63,7 @@ async def _spent(
     window_end: datetime,
     display_currency: str,
 ) -> Decimal:
-    amount_expr = _converted_amount_expr(display_currency)
+    amount_expr = converted_amount_expr(Transaction.amount, Transaction.currency, display_currency)
     query = select(sa_func.coalesce(sa_func.sum(amount_expr), 0)).where(
         Transaction.user_id == user_id,
         Transaction.occurred_at >= window_start,

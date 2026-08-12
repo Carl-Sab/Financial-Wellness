@@ -3,22 +3,19 @@ import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import { apiFetch } from "../lib/api";
 import { currencySymbol, formatMoney } from "../lib/currency";
-import CheckinArousalSlider from "./CheckinArousalSlider";
-import CheckinSlider from "./CheckinSlider";
+import CheckinReadingField from "./CheckinReadingField";
 import {
   CATEGORIES,
   CATEGORY_QUESTION,
-  QUICK_AROUSAL_QUESTION,
-  SLIDERS,
+  READINGS,
+  READINGS_HINT,
+  READINGS_QUESTION,
   VALENCE_LEVELS,
   VALENCE_QUESTION,
 } from "./checkinItems";
 import "./Signup.css";
 import "./Questionnaire.css";
 import "./Checkin.css";
-
-const SLIDER_DEFAULT = 0.0;
-const QUICK_AROUSAL_DEFAULT = 0;
 
 // A UI preference, not auth state — plain localStorage, no backend round
 // trip needed to remember which mode they used last time.
@@ -60,10 +57,30 @@ const TIER_COPY = {
   high: "This purchase is likely to push you past budget this month.",
 };
 
-function initialSliderValues() {
+function initialReadings() {
   const values = {};
-  for (const slider of SLIDERS) values[slider.field] = SLIDER_DEFAULT;
+  for (const reading of READINGS) values[reading.field] = "";
   return values;
+}
+
+// Only readings with a non-empty, in-range value count — mirrors the
+// backend's own checkins.at_least_one_reading rule instead of inventing a
+// stricter one. Out-of-range non-empty entries are reported as issues, not
+// silently dropped, so a typo can't quietly submit as "no reading."
+function parseReadings(readings) {
+  const values = {};
+  const issues = {};
+  for (const reading of READINGS) {
+    const raw = readings[reading.field] ?? "";
+    if (raw.trim() === "") continue;
+    const num = Number(raw);
+    if (!Number.isFinite(num) || num < reading.min || num > reading.max) {
+      issues[reading.field] = `Enter a value between ${reading.min} and ${reading.max}`;
+      continue;
+    }
+    values[reading.field] = num;
+  }
+  return { values, issues };
 }
 
 // form: the check-in questions. prediction: the mocked result box.
@@ -76,10 +93,12 @@ export default function Checkin() {
   const [valenceIndex, setValenceIndex] = useState(null);
   const [mode, setMode] = useState(loadStoredMode);
   // Both modes' values live in state at the same time and neither is ever
-  // cleared on switch — only which one is displayed (and sent) changes —
-  // so switching back and forth never loses what was already entered.
-  const [quickArousal, setQuickArousal] = useState(QUICK_AROUSAL_DEFAULT);
-  const [sliderValues, setSliderValues] = useState(initialSliderValues);
+  // cleared on switch — only which fields are shown (and which get sent)
+  // changes — so switching back and forth never loses what was entered.
+  const [readings, setReadings] = useState(initialReadings);
+  const [readingsTouched, setReadingsTouched] = useState({});
+  const [checkinId, setCheckinId] = useState(null);
+  const [checkinSubmitStatus, setCheckinSubmitStatus] = useState("idle"); // idle | loading | error
   const [amount, setAmount] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
   // Independent of the account's default currency (users.currency) — same
@@ -93,7 +112,12 @@ export default function Checkin() {
   const isSubmittingRef = useRef(false);
 
   const stage = STAGES[stageIndex];
-  const canSubmitCheckin = category != null && valenceIndex != null;
+  const visibleReadings = READINGS.filter((r) => mode === "detailed" || r.quick);
+  const { values: parsedReadingValues, issues: readingIssues } = parseReadings(readings);
+  const hasAnyIssue = Object.keys(readingIssues).length > 0;
+  const hasAtLeastOneReading = Object.keys(parsedReadingValues).length > 0;
+  const canSubmitCheckin =
+    category != null && valenceIndex != null && hasAtLeastOneReading && !hasAnyIssue;
   const amountNumber = Number(amount);
   const amountValid = amount.trim() !== "" && Number.isFinite(amountNumber) && amountNumber > 0;
 
@@ -102,13 +126,53 @@ export default function Checkin() {
     storeMode(nextMode);
   }
 
+  function handleReadingChange(field, value) {
+    setReadings((r) => ({ ...r, [field]: value }));
+  }
+
+  function handleReadingBlur(field) {
+    setReadingsTouched((t) => ({ ...t, [field]: true }));
+  }
+
+  async function submitCheckin() {
+    if (isSubmittingRef.current) return;
+    if (!canSubmitCheckin) {
+      setReadingsTouched(Object.fromEntries(READINGS.map((r) => [r.field, true])));
+      return;
+    }
+    isSubmittingRef.current = true;
+    setCheckinSubmitStatus("loading");
+
+    try {
+      const response = await apiFetch("/api/v1/checkins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category_code: category,
+          valence: VALENCE_LEVELS[valenceIndex].valence,
+          ...parsedReadingValues,
+        }),
+      });
+
+      if (!response.ok) {
+        setCheckinSubmitStatus("error");
+        return;
+      }
+
+      const checkin = await response.json();
+      setCheckinId(checkin.id);
+      setCheckinSubmitStatus("idle");
+      setStageIndex(1); // -> prediction
+    } catch {
+      setCheckinSubmitStatus("error");
+    } finally {
+      isSubmittingRef.current = false;
+    }
+  }
+
   function handleCheckinSubmit(event) {
     event.preventDefault();
-    if (isSubmittingRef.current) return;
-    if (!canSubmitCheckin) return;
-    isSubmittingRef.current = true;
-    setStageIndex(1); // -> prediction
-    isSubmittingRef.current = false;
+    submitCheckin();
   }
 
   function handleContinueToAmount() {
@@ -138,6 +202,7 @@ export default function Checkin() {
           amount: amountNumber,
           currency,
           category_code: category,
+          checkin_id: checkinId,
         }),
       });
 
@@ -238,7 +303,9 @@ export default function Checkin() {
             </section>
 
             <section className="checkin__section">
-              <div className="checkin-mode-toggle" role="radiogroup" aria-label="How to report how you feel">
+              <h2 className="checkin__question">{READINGS_QUESTION}</h2>
+
+              <div className="checkin-mode-toggle" role="radiogroup" aria-label="How many readings to enter">
                 <button
                   type="button"
                   role="radio"
@@ -259,36 +326,42 @@ export default function Checkin() {
                 </button>
               </div>
 
-              {mode === "quick" ? (
-                <div className="checkin__section--sliders">
-                  <CheckinArousalSlider
-                    id="slider-quick-arousal"
-                    question={QUICK_AROUSAL_QUESTION}
-                    value={quickArousal}
-                    onChange={setQuickArousal}
-                  />
-                </div>
-              ) : (
-                <div className="checkin__section--sliders">
-                  {SLIDERS.map((slider) => (
-                    <CheckinSlider
-                      key={slider.field}
-                      id={`slider-${slider.field}`}
-                      question={slider.question}
-                      leftLabel={slider.leftLabel}
-                      rightLabel={slider.rightLabel}
-                      value={sliderValues[slider.field]}
-                      onChange={(value) =>
-                        setSliderValues((v) => ({ ...v, [slider.field]: value }))
-                      }
+              <p className="checkin__hint">{READINGS_HINT}</p>
+
+              <div className="checkin__readings">
+                {visibleReadings.map((reading) => (
+                  <div key={reading.field}>
+                    <CheckinReadingField
+                      reading={reading}
+                      value={readings[reading.field]}
+                      onChange={(value) => handleReadingChange(reading.field, value)}
+                      onBlur={() => handleReadingBlur(reading.field)}
                     />
-                  ))}
-                </div>
-              )}
+                    {readingsTouched[reading.field] && readingIssues[reading.field] && (
+                      <p className="field__error" role="alert">
+                        {readingIssues[reading.field]}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </section>
 
-            <button type="submit" className="btn btn--dark checkin__submit" disabled={!canSubmitCheckin}>
-              Done
+            {checkinSubmitStatus === "error" && (
+              <p className="questionnaire__form-error" role="alert">
+                Couldn&rsquo;t reach the server. Nothing you entered was lost.{" "}
+                <button type="button" className="questionnaire__retry" onClick={submitCheckin}>
+                  Try again
+                </button>
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn--dark checkin__submit"
+              disabled={!canSubmitCheckin || checkinSubmitStatus === "loading"}
+            >
+              {checkinSubmitStatus === "loading" ? "Recording…" : "Done"}
             </button>
           </form>
         )}

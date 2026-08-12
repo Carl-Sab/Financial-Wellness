@@ -1,10 +1,12 @@
-// Question wording, response scales, and ordering are copied verbatim from
-// pretransaction_questionnaire_compact.pdf (repo root) — do not paraphrase.
-// "Show the screens in this exact order" (PDF, p.1) — CATEGORY, then
-// VALENCE, then the four perceived-state sliders in the order below.
-// Section 3 (heart rate) is deliberately not represented here: the PDF is
-// explicit that "No question is shown" for it — z_hr is computed
-// backend-side from the wearable feed, never typed by the respondent.
+// CATEGORY and VALENCE below still match pretransaction_questionnaire_compact.pdf
+// (repo root) verbatim. The physiological READINGS section does not: the PDF
+// specified self-reported "-2..+2 compared with usual" sliders with no backend
+// anywhere that accepts them. This app links to the OTHER, already-built and
+// tested backend piece instead — the real z-score arousal-scoring pipeline in
+// wellness/services/arousal.py, which needs actual physiological readings
+// (bpm/ms/µS/%/°C), not a self-reported feeling. Field names and range limits
+// below match wellness/schemas/checkins.py's CheckinCreate and the DB's own
+// CHECK constraints exactly.
 
 // Category codes and labels match categories.code/categories.label in the
 // DB (schema.sql) exactly — this is also PDF section 1's store_category
@@ -36,46 +38,37 @@ export const VALENCE_LEVELS = [
   { valence: "very_pleasant", valence_z: 2, label: "Very positive / pleasant" },
 ];
 
-// PDF sections 4-7. field matches the PDF's "Frontend field" name exactly.
-// left/right are that question's own "Direction" wording verbatim; every
-// one of the four uses "0.0 = normal" for the center.
-export const SLIDERS = [
-  {
-    field: "perceived_hrv",
-    question: "How steady and calm does your heartbeat feel compared with usual?",
-    leftLabel: "Much less steady / more irregular",
-    rightLabel: "Much steadier / calmer",
-  },
-  {
-    field: "perceived_eda",
-    question: "How sweaty or clammy do you feel compared with usual?",
-    leftLabel: "Much drier",
-    rightLabel: "Much sweatier / clammier",
-  },
-  {
-    field: "perceived_respiration",
-    question: "How fast or shallow is your breathing compared with usual?",
-    leftLabel: "Much slower / deeper",
-    rightLabel: "Much faster / shallower",
-  },
-  {
-    field: "perceived_skin_temperature",
-    question: "How warm or flushed does your skin feel compared with usual?",
-    leftLabel: "Much colder",
-    rightLabel: "Much warmer / more flushed",
-  },
-];
+// Real physiological readings the arousal-scoring pipeline actually scores
+// (wellness/services/arousal.py's _METRIC_SPEC) — field names match
+// CheckinCreate exactly, min/max match the DB's own CHECK constraints.
+// `quick: true` = shown in Quick mode; every field shows in Detailed mode.
+// All are individually optional — the backend only requires at least one
+// non-null reading total (checkins.at_least_one_reading), which is exactly
+// the rule the submit button below enforces, not a stricter invented one.
+export const READINGS_QUESTION = "What are your readings right now?";
+export const READINGS_HINT =
+  "Fill in what you know — even one reading is enough. Check a smartwatch or fitness tracker, or count your pulse for 15 seconds and multiply by 4 for heart rate.";
 
-// Quick mode: not from the PDF — a single-slider alternative to the four
-// sliders above, for the common case of checking in before every purchase.
-// Same -2..+2 scale and integer-only ("no decimals" — five stops, not the
-// 41-value continuous sliders above).
-export const QUICK_AROUSAL_QUESTION = "How low or high is your arousal right now?";
-
-export const QUICK_AROUSAL_LEVELS = [
-  { value: -2, label: "Very low arousal" },
-  { value: -1, label: "Low arousal" },
-  { value: 0, label: "Neutral" },
-  { value: 1, label: "High arousal" },
-  { value: 2, label: "Very high arousal" },
+export const READINGS = [
+  { field: "heart_rate", label: "Heart rate", unit: "bpm", min: 30, max: 220, step: 1, quick: true },
+  { field: "hrv_ms", label: "Heart rate variability", unit: "ms", min: 1, max: 300, step: 1, quick: false },
+  {
+    field: "eda_microsiemens",
+    label: "Skin conductance (EDA)",
+    unit: "µS",
+    min: 0,
+    max: 100,
+    step: 0.1,
+    quick: false,
+  },
+  { field: "spo2_percent", label: "Blood oxygen (SpO2)", unit: "%", min: 70, max: 100, step: 1, quick: false },
+  {
+    field: "skin_temp_c",
+    label: "Skin temperature",
+    unit: "°C",
+    min: 30,
+    max: 43,
+    step: 0.1,
+    quick: false,
+  },
 ];

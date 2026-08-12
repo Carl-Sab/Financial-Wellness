@@ -11,7 +11,7 @@ import Login from "./pages/Login";
 import OnboardingBudget from "./pages/OnboardingBudget";
 import Questionnaire from "./pages/Questionnaire";
 import Signup from "./pages/Signup";
-import StubPage from "./pages/StubPage";
+import Statistics from "./pages/Statistics";
 
 function AppPage({ children }) {
   return (
@@ -79,7 +79,7 @@ export default function App() {
         path="/statistics"
         element={
           <AppPage>
-            <StubPage title="Statistics" />
+            <Statistics />
           </AppPage>
         }
       />
