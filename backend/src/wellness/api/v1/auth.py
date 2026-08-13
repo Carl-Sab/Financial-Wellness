@@ -27,7 +27,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from wellness.api.deps import get_current_user
 from wellness.config import get_settings
 from wellness.db import get_session
-from wellness.models import BankAccount, LoginFailure, RefreshToken, User, UserSettings
+from wellness.models import (
+    BankAccount,
+    LoginFailure,
+    RefreshToken,
+    User,
+    UserNormalizationSnapshot,
+)
+from wellness.models.normalization_snapshots import POPULATION_NORMALIZATION_DEFAULTS
 from wellness.schemas.auth import AccessTokenResponse, LoginRequest, RegisterRequest
 from wellness.schemas.users import UserRead
 from wellness.security import create_access_token, hash_password, verify_password
@@ -74,11 +81,10 @@ async def register(payload: RegisterRequest, session: AsyncSession = Depends(get
     try:
         session.add(user)
         # Flushed, not committed: user.id is server-generated (gen_random_uuid())
-        # and the settings/account rows below need it, but all three inserts
-        # must still land in a single transaction — one commit for all, and
+        # and the dependent rows below need it, but every insert must still land
+        # in a single transaction — one commit for all, and
         # the rollback on failure undoes all of them together.
         await session.flush()
-        session.add(UserSettings(user_id=user.id))
         # A bank account exists from day one so nothing downstream (goals,
         # transactions, the eventual budget onboarding step) has to handle
         # a user with no account yet. No ledger entries — an empty account
@@ -88,6 +94,12 @@ async def register(payload: RegisterRequest, session: AsyncSession = Depends(get
                 user_id=user.id,
                 account_number=f"ACC-{user.id.hex[:12].upper()}",
                 currency=user.currency,
+            )
+        )
+        session.add(
+            UserNormalizationSnapshot(
+                user_id=user.id,
+                **POPULATION_NORMALIZATION_DEFAULTS,
             )
         )
         await session.commit()

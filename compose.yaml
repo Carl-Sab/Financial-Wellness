@@ -1,0 +1,86 @@
+name: financial-wellness
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wellness}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wellness}
+      POSTGRES_DB: ${POSTGRES_DB:-wellness}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-wellness} -d ${POSTGRES_DB:-wellness}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: local
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-wellness}:${POSTGRES_PASSWORD:-wellness}@db:5432/${POSTGRES_DB:-wellness}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      FRONTEND_ORIGIN: http://localhost:${WEB_PORT:-5173}
+      API_KEY_SECRET_FROM_EURISKO: ${API_KEY_SECRET_FROM_EURISKO:-}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs')
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5173').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # The prediction bundle is currently a one-shot CLI, not an HTTP service.
+  # Keep it in the same Compose file without starting it during the app stack:
+  #   docker compose --profile prediction run --rm prediction
+  prediction:
+    profiles: [prediction]
+    build:
+      context: ./ai
+      dockerfile: Dockerfile
+    image: eurisko-combined-prediction:local
+
+volumes:
+  postgres_data:

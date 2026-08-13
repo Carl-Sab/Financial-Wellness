@@ -13,3 +13,4 @@ class CategoryRead(BaseModel):
     advertising_level: Level3
     distribution_level: Level3
     stimuli_score: float | None
+    marketing_score: float

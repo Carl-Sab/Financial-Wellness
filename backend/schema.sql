@@ -2,11 +2,9 @@
 -- Wellness & spending app - database schema (v3)
 -- Plain PostgreSQL 16.
 --
--- Data model: the user manually enters physiological readings at a
--- check-in immediately before a transaction. Mean and standard
--- deviation are NOT entered - they are computed per user across that
--- user's accumulated check-in history. A given reading is then scored
--- as a z-score against that user's own baseline.
+-- Data model: the user records subjective arousal metrics in a check-in
+-- immediately before a transaction. Per-user normalization statistics are
+-- stored separately and populated explicitly; check-ins do not update them.
 --
 -- Boundary: financial data is never read by the arousal scoring path.
 -- =====================================================================
@@ -82,17 +80,17 @@ CREATE TABLE categories (
     price_level         level_3 NOT NULL,
     advertising_level   level_3 NOT NULL,
     distribution_level  level_3 NOT NULL,
-    stimuli_score       REAL     -- derived, 0-1; see section 8
+    stimuli_score       REAL,    -- legacy derived value; see section 8
+    marketing_score     REAL NOT NULL CHECK (marketing_score BETWEEN 0 AND 1)
 );
 
 
 -- =====================================================================
 -- 4. CHECK-IN  (the core table)
 --
--- One row per pre-transaction check-in. Every physiological value is
--- entered by the user. All are nullable: the user may not have every
--- reading available, and a check-in with only some values is still
--- useful.
+-- One row per pre-transaction check-in. New clients use either manual
+-- arousal (one direct value) or detailed arousal (five separate values).
+-- The raw physiological columns remain for legacy clients/history.
 --
 -- NOTE ON EEG: consumer wearables do not report EEG. The column exists
 -- because it was requested, but expect it to be null in practice.
@@ -107,105 +105,101 @@ CREATE TABLE checkins (
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category_code       TEXT NOT NULL REFERENCES categories(code),
     valence             valence_level NOT NULL,
-    checkin_type        TEXT NOT NULL DEFAULT 'pre_transaction',  -- 'pre_transaction' | 'standalone'
 
-    -- manually entered physiological readings
-    heart_rate          REAL CHECK (heart_rate BETWEEN 30 AND 220),
-    hrv_ms              REAL CHECK (hrv_ms BETWEEN 1 AND 300),
-    eda_microsiemens    REAL CHECK (eda_microsiemens BETWEEN 0 AND 100),
-    spo2_percent        REAL CHECK (spo2_percent BETWEEN 70 AND 100),
-    skin_temp_c         REAL CHECK (skin_temp_c BETWEEN 30 AND 43),
-    eeg_value           REAL,
+    -- subjective questionnaire inputs: every value is -2, -1, 0, 1, or 2
+    arousal_input_mode  TEXT CHECK (arousal_input_mode IN ('manual', 'detailed')),
+    arousal_z           REAL CHECK (arousal_z IN (-2, -1, 0, 1, 2)),
+    perceived_heart_rate REAL CHECK (perceived_heart_rate IN (-2, -1, 0, 1, 2)),
+    perceived_heartbeat_steadiness REAL
+        CHECK (perceived_heartbeat_steadiness IN (-2, -1, 0, 1, 2)),
+    perceived_sweating  REAL CHECK (perceived_sweating IN (-2, -1, 0, 1, 2)),
+    perceived_respiration REAL CHECK (perceived_respiration IN (-2, -1, 0, 1, 2)),
+    perceived_temperature_difference REAL
+        CHECK (perceived_temperature_difference IN (-2, -1, 0, 1, 2)),
 
     entered_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    -- at least one reading must be present
-    CONSTRAINT at_least_one_reading CHECK (
-        heart_rate IS NOT NULL OR hrv_ms IS NOT NULL
-        OR eda_microsiemens IS NOT NULL OR spo2_percent IS NOT NULL
-        OR skin_temp_c IS NOT NULL OR eeg_value IS NOT NULL
+    CONSTRAINT arousal_input_contract CHECK (
+        (arousal_input_mode IS NULL AND arousal_z IS NULL
+            AND perceived_heart_rate IS NULL
+            AND perceived_heartbeat_steadiness IS NULL
+            AND perceived_sweating IS NULL AND perceived_respiration IS NULL
+            AND perceived_temperature_difference IS NULL)
+        OR (arousal_input_mode = 'manual'
+            AND arousal_z IS NOT NULL
+            AND perceived_heart_rate IS NULL
+            AND perceived_heartbeat_steadiness IS NULL
+            AND perceived_sweating IS NULL AND perceived_respiration IS NULL
+            AND perceived_temperature_difference IS NULL)
+        OR (arousal_input_mode = 'detailed'
+            AND arousal_z IS NULL
+            AND perceived_heart_rate IS NOT NULL
+            AND perceived_heartbeat_steadiness IS NOT NULL
+            AND perceived_sweating IS NOT NULL AND perceived_respiration IS NOT NULL
+            AND perceived_temperature_difference IS NOT NULL)
     )
 );
 CREATE INDEX ON checkins (user_id, entered_at DESC);
 
 
 -- =====================================================================
--- 5. BASELINE
+-- 5. PER-USER METRIC NORMALIZATION STATISTICS
 --
--- Mean and standard deviation per user per metric, computed across
--- that user's check-in history. Refreshed after each new check-in.
--- This is what makes a reading interpretable: 82 bpm means nothing
--- until you know that this person's own mean is 71 with an sd of 6.
---
--- sample_n matters: with fewer than about 8 check-ins the standard
--- deviation is unstable and should not be used for scoring.
+-- Storage only. Values are inserted or replaced explicitly; creating,
+-- updating, or deleting a check-in does not change this table.
 -- =====================================================================
 
-CREATE TABLE user_baseline (
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    metric          TEXT NOT NULL,   -- 'heart_rate' | 'hrv_ms' | ...
-    mean_value      REAL NOT NULL,
-    sd_value        REAL,            -- null until sample_n >= 2
-    sample_n        INTEGER NOT NULL,
-    min_value       REAL,
-    max_value       REAL,
-    computed_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+CREATE TABLE user_metric_statistics (
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    metric        TEXT NOT NULL CHECK (metric IN (
+        'perceived_heart_rate',
+        'perceived_heartbeat_steadiness',
+        'perceived_sweating',
+        'perceived_respiration',
+        'perceived_temperature_difference'
+    )),
+    mean_value    REAL NOT NULL,
+    std_value     REAL NOT NULL CHECK (std_value >= 0),
+    computed_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+
     PRIMARY KEY (user_id, metric)
 );
 
 
 -- =====================================================================
--- 6. AROUSAL
+-- 7. BANK ACCOUNTS AND UNIFIED TRANSACTIONS
 --
--- Derived from a check-in by comparing each reading to the user's
--- baseline. One row per check-in.
+-- Both account balances and purchase history are derived from transactions.
+-- There is no separate bank_ledger table or mutable current-balance column.
 -- =====================================================================
 
-CREATE TYPE arousal_label AS ENUM ('calm', 'elevated', 'high', 'unknown');
+CREATE TYPE transaction_direction AS ENUM ('credit', 'debit');
 
-CREATE TABLE arousal_state (
+CREATE TABLE bank_accounts (
     id                  BIGSERIAL PRIMARY KEY,
-    checkin_id          BIGINT NOT NULL UNIQUE REFERENCES checkins(id) ON DELETE CASCADE,
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-
-    -- per-metric z-scores: (reading - user mean) / user sd
-    z_heart_rate        REAL,
-    z_hrv               REAL,
-    z_eda               REAL,
-    z_spo2              REAL,
-    z_skin_temp         REAL,
-
-    score               REAL CHECK (score BETWEEN 0 AND 1),
-    label               arousal_label NOT NULL DEFAULT 'unknown',
-    confidence          REAL CHECK (confidence BETWEEN 0 AND 1),
-    metrics_used        SMALLINT NOT NULL,   -- how many z-scores were computable
-    model_version       TEXT NOT NULL,
-    computed_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+    account_number      TEXT NOT NULL UNIQUE,
+    currency            TEXT NOT NULL DEFAULT 'LBP',
+    opening_balance     NUMERIC(14,2) NOT NULL DEFAULT 0,
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    opened_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX ON arousal_state (user_id, computed_at DESC);
-
-
--- =====================================================================
--- 7. TRANSACTIONS
---
--- BOUNDARY: nothing in this section is read by the arousal scorer.
--- Arousal is computed from physiology alone. Spending is analysed
--- against arousal, never used to produce it.
--- =====================================================================
 
 CREATE TABLE transactions (
     id              BIGSERIAL PRIMARY KEY,
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id      BIGINT NOT NULL REFERENCES bank_accounts(id),
     checkin_id      BIGINT REFERENCES checkins(id),  -- the check-in that preceded it
+    direction       transaction_direction NOT NULL DEFAULT 'debit',
     amount          NUMERIC(14,2) NOT NULL CHECK (amount >= 0),
     currency        TEXT NOT NULL DEFAULT 'LBP',
-    category_code   TEXT NOT NULL REFERENCES categories(code),
-    merchant_name   TEXT,
+    category_code   TEXT REFERENCES categories(code),
+    description     TEXT,
     occurred_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    was_planned     BOOLEAN,          -- optional self-report
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX ON transactions (user_id, occurred_at DESC);
+CREATE INDEX ON transactions (account_id, occurred_at DESC);
 CREATE INDEX ON transactions (user_id, category_code, occurred_at DESC);
 
 
@@ -225,16 +219,6 @@ CREATE UNIQUE INDEX one_current_financial_profile
 -- =====================================================================
 -- 8. NOTIFICATIONS
 -- =====================================================================
-
-CREATE TABLE user_settings (
-    user_id                     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    quiet_hours_start           TIME NOT NULL DEFAULT '22:00',
-    quiet_hours_end             TIME NOT NULL DEFAULT '08:00',
-    max_notifs_per_day          SMALLINT NOT NULL DEFAULT 3,
-    notifications_enabled       BOOLEAN NOT NULL DEFAULT TRUE,
-    notifications_muted_until   TIMESTAMPTZ,
-    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 
 CREATE TYPE outbox_status AS ENUM ('pending', 'sent', 'failed', 'suppressed');
 
@@ -265,36 +249,6 @@ CREATE TABLE notification_feedback (
 );
 
 
--- =====================================================================
--- 9. HOW TO COMPUTE MEAN AND STANDARD DEVIATION
---
--- Run after every new check-in, for the user who just checked in.
--- stddev_samp() is the sample standard deviation (n-1 denominator),
--- which is correct here. It returns NULL when there is only one row.
--- =====================================================================
-
--- Refresh one metric for one user:
---
--- INSERT INTO user_baseline (user_id, metric, mean_value, sd_value,
---                            sample_n, min_value, max_value, computed_at)
--- SELECT user_id,
---        'heart_rate',
---        avg(heart_rate),
---        stddev_samp(heart_rate),
---        count(heart_rate),
---        min(heart_rate),
---        max(heart_rate)
---        , now()
--- FROM checkins
--- WHERE user_id = :user_id AND heart_rate IS NOT NULL
--- GROUP BY user_id
--- ON CONFLICT (user_id, metric) DO UPDATE
---   SET mean_value  = EXCLUDED.mean_value,
---       sd_value    = EXCLUDED.sd_value,
---       sample_n    = EXCLUDED.sample_n,
---       min_value   = EXCLUDED.min_value,
---       max_value   = EXCLUDED.max_value,
---       computed_at = EXCLUDED.computed_at;
 --
 -- Repeat with hrv_ms, eda_microsiemens, spo2_percent, skin_temp_c.
 
@@ -322,14 +276,15 @@ CREATE TABLE notification_feedback (
 -- =====================================================================
 
 INSERT INTO categories (code, label, identity_level, price_level,
-                        advertising_level, distribution_level) VALUES
- ('groceries',   'Groceries',   'low',  'low',  'high', 'high'),
- ('clothing',    'Clothing',    'high', 'mid',  'high', 'mid'),
- ('restaurant',  'Restaurant',  'low',  'low',  'mid',  'high'),
- ('electronics', 'Electronics', 'mid',  'high', 'high', 'mid'),
- ('mall',        'Mall',        'high', 'mid',  'high', 'mid'),
- ('online',      'Online',      'mid',  'low',  'high', 'high'),
- ('other',       'Other',       'mid',  'mid',  'mid',  'mid');
+                        advertising_level, distribution_level,
+                        marketing_score) VALUES
+ ('groceries',   'Groceries',   'low',  'low',  'high', 'high', 0.75),
+ ('clothing',    'Clothing',    'high', 'mid',  'high', 'mid',  1.00),
+ ('restaurant',  'Restaurant',  'low',  'low',  'mid',  'high', 0.50),
+ ('electronics', 'Electronics', 'mid',  'high', 'high', 'mid',  0.00),
+ ('mall',        'Mall',        'high', 'mid',  'high', 'mid',  1.00),
+ ('online',      'Online',      'mid',  'low',  'high', 'high', 0.75),
+ ('other',       'Other',       'mid',  'mid',  'mid',  'mid',  0.25);
 
 -- Derived marketing-stimuli score. Weight directions follow the
 -- meta-analysis; the magnitudes are a project decision and should be

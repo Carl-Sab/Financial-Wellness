@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import { apiFetch } from "../lib/api";
 import { currencySymbol, formatMoney } from "../lib/currency";
-import CheckinReadingField from "./CheckinReadingField";
+import ArousalSliderField from "./ArousalSliderField";
 import {
+  AROUSAL_QUESTION,
   CATEGORIES,
   CATEGORY_QUESTION,
-  READINGS,
-  READINGS_HINT,
-  READINGS_QUESTION,
+  DETAILED_AROUSAL,
+  DETAILED_AROUSAL_HINT,
+  QUICK_AROUSAL,
+  QUICK_AROUSAL_HINT,
   VALENCE_LEVELS,
   VALENCE_QUESTION,
 } from "./checkinItems";
@@ -38,52 +40,11 @@ function storeMode(mode) {
   }
 }
 
-// TODO: replace with the real overspend-prediction call once that endpoint
-// exists — e.g. POST /api/v1/predictions/overspend with the check-in
-// payload below, expecting something like { probability: number } back.
-// Edit this value directly to preview the box at low/medium/high — try
-// 0.15, 0.5, and 0.85.
-const MOCK_OVERSPEND_PROBABILITY = 0.42;
-
-function overspendTier(probability) {
-  if (probability < 0.34) return "low";
-  if (probability < 0.67) return "medium";
-  return "high";
+function initialDetailedArousal() {
+  return Object.fromEntries(DETAILED_AROUSAL.map((item) => [item.field, 0]));
 }
 
-const TIER_COPY = {
-  low: "This looks in line with how you usually spend.",
-  medium: "This purchase has some chance of pushing you past budget this month.",
-  high: "This purchase is likely to push you past budget this month.",
-};
-
-function initialReadings() {
-  const values = {};
-  for (const reading of READINGS) values[reading.field] = "";
-  return values;
-}
-
-// Only readings with a non-empty, in-range value count — mirrors the
-// backend's own checkins.at_least_one_reading rule instead of inventing a
-// stricter one. Out-of-range non-empty entries are reported as issues, not
-// silently dropped, so a typo can't quietly submit as "no reading."
-function parseReadings(readings) {
-  const values = {};
-  const issues = {};
-  for (const reading of READINGS) {
-    const raw = readings[reading.field] ?? "";
-    if (raw.trim() === "") continue;
-    const num = Number(raw);
-    if (!Number.isFinite(num) || num < reading.min || num > reading.max) {
-      issues[reading.field] = `Enter a value between ${reading.min} and ${reading.max}`;
-      continue;
-    }
-    values[reading.field] = num;
-  }
-  return { values, issues };
-}
-
-// form: the check-in questions. prediction: the mocked result box.
+// form: the check-in questions. prediction: the live model result.
 // amount: the transaction amount. success: recorded.
 const STAGES = ["form", "prediction", "amount", "success"];
 
@@ -92,13 +53,15 @@ export default function Checkin() {
   const [category, setCategory] = useState(null);
   const [valenceIndex, setValenceIndex] = useState(null);
   const [mode, setMode] = useState(loadStoredMode);
-  // Both modes' values live in state at the same time and neither is ever
-  // cleared on switch — only which fields are shown (and which get sent)
-  // changes — so switching back and forth never loses what was entered.
-  const [readings, setReadings] = useState(initialReadings);
-  const [readingsTouched, setReadingsTouched] = useState({});
+  // Both modes keep their own values, so switching modes does not discard
+  // what the user already selected. Sliders default to the neutral value 0.
+  const [quickArousal, setQuickArousal] = useState(0);
+  const [detailedArousal, setDetailedArousal] = useState(initialDetailedArousal);
   const [checkinId, setCheckinId] = useState(null);
   const [checkinSubmitStatus, setCheckinSubmitStatus] = useState("idle"); // idle | loading | error
+  const [prediction, setPrediction] = useState(null);
+  const [predictionStatus, setPredictionStatus] = useState("idle"); // idle | loading | error
+  const [predictionError, setPredictionError] = useState("");
   const [amount, setAmount] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
   // Independent of the account's default currency (users.currency) — same
@@ -112,12 +75,8 @@ export default function Checkin() {
   const isSubmittingRef = useRef(false);
 
   const stage = STAGES[stageIndex];
-  const visibleReadings = READINGS.filter((r) => mode === "detailed" || r.quick);
-  const { values: parsedReadingValues, issues: readingIssues } = parseReadings(readings);
-  const hasAnyIssue = Object.keys(readingIssues).length > 0;
-  const hasAtLeastOneReading = Object.keys(parsedReadingValues).length > 0;
-  const canSubmitCheckin =
-    category != null && valenceIndex != null && hasAtLeastOneReading && !hasAnyIssue;
+  const visibleArousalItems = mode === "quick" ? [QUICK_AROUSAL] : DETAILED_AROUSAL;
+  const canSubmitCheckin = category != null && valenceIndex != null;
   const amountNumber = Number(amount);
   const amountValid = amount.trim() !== "" && Number.isFinite(amountNumber) && amountNumber > 0;
 
@@ -126,18 +85,58 @@ export default function Checkin() {
     storeMode(nextMode);
   }
 
-  function handleReadingChange(field, value) {
-    setReadings((r) => ({ ...r, [field]: value }));
+  function handleArousalChange(field, value) {
+    if (mode === "quick") {
+      setQuickArousal(value);
+      return;
+    }
+    setDetailedArousal((current) => ({ ...current, [field]: value }));
   }
 
-  function handleReadingBlur(field) {
-    setReadingsTouched((t) => ({ ...t, [field]: true }));
+  async function loadPrediction(id) {
+    setPrediction(null);
+    setPredictionStatus("loading");
+    setPredictionError("");
+
+    try {
+      const response = await apiFetch(`/api/v1/checkins/${id}/prediction`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        let message = "Couldnâ€™t calculate the risk right now.";
+        try {
+          const body = await response.json();
+          if (typeof body.detail === "string") message = body.detail;
+        } catch {
+          // Keep the fallback when the server does not return JSON.
+        }
+        setPredictionError(message);
+        setPredictionStatus("error");
+        return;
+      }
+
+      setPrediction(await response.json());
+      setPredictionStatus("idle");
+    } catch {
+      setPredictionError("Couldnâ€™t reach the prediction service.");
+      setPredictionStatus("error");
+    }
+  }
+
+  async function retryPrediction() {
+    if (isSubmittingRef.current || checkinId == null) return;
+    isSubmittingRef.current = true;
+    try {
+      await loadPrediction(checkinId);
+    } finally {
+      isSubmittingRef.current = false;
+    }
   }
 
   async function submitCheckin() {
     if (isSubmittingRef.current) return;
     if (!canSubmitCheckin) {
-      setReadingsTouched(Object.fromEntries(READINGS.map((r) => [r.field, true])));
       return;
     }
     isSubmittingRef.current = true;
@@ -150,7 +149,9 @@ export default function Checkin() {
         body: JSON.stringify({
           category_code: category,
           valence: VALENCE_LEVELS[valenceIndex].valence,
-          ...parsedReadingValues,
+          ...(mode === "quick"
+            ? { arousal_input_mode: "manual", arousal_z: quickArousal }
+            : { arousal_input_mode: "detailed", ...detailedArousal }),
         }),
       });
 
@@ -163,6 +164,7 @@ export default function Checkin() {
       setCheckinId(checkin.id);
       setCheckinSubmitStatus("idle");
       setStageIndex(1); // -> prediction
+      await loadPrediction(checkin.id);
     } catch {
       setCheckinSubmitStatus("error");
     } finally {
@@ -176,6 +178,7 @@ export default function Checkin() {
   }
 
   function handleContinueToAmount() {
+    if (prediction == null) return;
     setStageIndex(2); // -> amount. The prediction never blocks this.
   }
 
@@ -244,9 +247,6 @@ export default function Checkin() {
     );
   }
 
-  const tier = overspendTier(MOCK_OVERSPEND_PROBABILITY);
-  const percent = Math.round(MOCK_OVERSPEND_PROBABILITY * 100);
-
   return (
     <div className="checkin">
       <div className="checkin__topbar">
@@ -303,9 +303,9 @@ export default function Checkin() {
             </section>
 
             <section className="checkin__section">
-              <h2 className="checkin__question">{READINGS_QUESTION}</h2>
+              <h2 className="checkin__question">{AROUSAL_QUESTION}</h2>
 
-              <div className="checkin-mode-toggle" role="radiogroup" aria-label="How many readings to enter">
+              <div className="checkin-mode-toggle" role="radiogroup" aria-label="Arousal entry mode">
                 <button
                   type="button"
                   role="radio"
@@ -326,23 +326,18 @@ export default function Checkin() {
                 </button>
               </div>
 
-              <p className="checkin__hint">{READINGS_HINT}</p>
+              <p className="checkin__hint">
+                {mode === "quick" ? QUICK_AROUSAL_HINT : DETAILED_AROUSAL_HINT}
+              </p>
 
-              <div className="checkin__readings">
-                {visibleReadings.map((reading) => (
-                  <div key={reading.field}>
-                    <CheckinReadingField
-                      reading={reading}
-                      value={readings[reading.field]}
-                      onChange={(value) => handleReadingChange(reading.field, value)}
-                      onBlur={() => handleReadingBlur(reading.field)}
-                    />
-                    {readingsTouched[reading.field] && readingIssues[reading.field] && (
-                      <p className="field__error" role="alert">
-                        {readingIssues[reading.field]}
-                      </p>
-                    )}
-                  </div>
+              <div className="checkin__arousal-fields">
+                {visibleArousalItems.map((item) => (
+                  <ArousalSliderField
+                    key={item.field}
+                    item={item}
+                    value={mode === "quick" ? quickArousal : detailedArousal[item.field]}
+                    onChange={(value) => handleArousalChange(item.field, value)}
+                  />
                 ))}
               </div>
             </section>
@@ -368,18 +363,40 @@ export default function Checkin() {
 
         {stage === "prediction" && (
           <section className="checkin__section">
-            <div className={`prediction prediction--${tier}`}>
-              <p className="prediction__label">Chance this runs past budget</p>
-              <p className="prediction__value">{percent}%</p>
-              <p className="prediction__context">{TIER_COPY[tier]}</p>
-            </div>
-            <button
-              type="button"
-              className="btn btn--dark checkin__submit"
-              onClick={handleContinueToAmount}
-            >
-              Continue
-            </button>
+            {predictionStatus === "loading" && (
+              <div className="prediction" aria-live="polite">
+                <p className="prediction__label">Current overspending risk</p>
+                <p className="prediction__context">Calculating from your check-in and budgetâ€¦</p>
+              </div>
+            )}
+
+            {predictionStatus === "error" && (
+              <div className="prediction prediction--error" role="alert">
+                <p className="prediction__label">Prediction unavailable</p>
+                <p className="prediction__context">{predictionError}</p>
+                <button type="button" className="questionnaire__retry" onClick={retryPrediction}>
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {prediction != null && predictionStatus !== "loading" && (
+              <>
+                <div className={`prediction prediction--${prediction.risk_level}`}>
+                  <p className="prediction__label">Current overspending risk</p>
+                  <p className="prediction__value">{prediction.overspending_percentage}%</p>
+                  <p className="prediction__tier">{prediction.risk_level} risk</p>
+                  <p className="prediction__context">{prediction.message}</p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--dark checkin__submit"
+                  onClick={handleContinueToAmount}
+                >
+                  Continue
+                </button>
+              </>
+            )}
           </section>
         )}
 

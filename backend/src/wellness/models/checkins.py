@@ -1,16 +1,8 @@
-"""Manual physiological check-ins.
+"""Subjective pre-transaction check-ins.
 
-Arousal-scoring domain. Nothing here may import from wellness.models.transactions
-or wellness.models.financial — see the boundary comment at the top of
-transactions.py. Arousal is scored from physiology entered at a check-in,
-compared against the user's own baseline; spending data plays no role in
-that computation.
-
-One row per pre-transaction check-in. Every physiological value is entered
-by the user and all are nullable: the user may not have every reading
-available, and a check-in with only some values is still useful. EEG is kept
-because it was requested, but consumer wearables don't report it, so expect
-it to be null in practice.
+Rows store either one direct arousal value (manual mode) or five separately
+reported perceived inputs (detailed mode). The prediction adapter owns the
+accepted proxy mapping from these perceived values to model feature names.
 """
 
 import uuid
@@ -34,8 +26,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from wellness.models.base import Base
 from wellness.models.enums import ValenceLevel
 
-# values_callable: see the note in categories.py — without it SQLAlchemy
-# binds "NEUTRAL" instead of "neutral" and every insert fails.
 valence_level_enum = SAEnum(
     ValenceLevel,
     name="valence_level",
@@ -51,34 +41,58 @@ class Checkin(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    category_code: Mapped[str] = mapped_column(Text, ForeignKey("categories.code"), nullable=False)
-    valence: Mapped[ValenceLevel] = mapped_column(valence_level_enum, nullable=False)
-    # 'pre_transaction' | 'standalone'
-    checkin_type: Mapped[str] = mapped_column(
-        Text, nullable=False, default="pre_transaction", server_default="pre_transaction"
+    category_code: Mapped[str] = mapped_column(
+        Text, ForeignKey("categories.code"), nullable=False
     )
+    valence: Mapped[ValenceLevel] = mapped_column(valence_level_enum, nullable=False)
 
-    heart_rate: Mapped[float | None] = mapped_column(REAL, nullable=True)
-    hrv_ms: Mapped[float | None] = mapped_column(REAL, nullable=True)
-    eda_microsiemens: Mapped[float | None] = mapped_column(REAL, nullable=True)
-    spo2_percent: Mapped[float | None] = mapped_column(REAL, nullable=True)
-    skin_temp_c: Mapped[float | None] = mapped_column(REAL, nullable=True)
-    eeg_value: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    # Every arousal value is one of five discrete slider stops.
+    arousal_input_mode: Mapped[str | None] = mapped_column(Text, nullable=True)
+    arousal_z: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    perceived_heart_rate: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    perceived_heartbeat_steadiness: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    perceived_sweating: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    perceived_respiration: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    perceived_temperature_difference: Mapped[float | None] = mapped_column(REAL, nullable=True)
 
     entered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     __table_args__ = (
-        CheckConstraint("heart_rate BETWEEN 30 AND 220", name="heart_rate_range"),
-        CheckConstraint("hrv_ms BETWEEN 1 AND 300", name="hrv_ms_range"),
-        CheckConstraint("eda_microsiemens BETWEEN 0 AND 100", name="eda_microsiemens_range"),
-        CheckConstraint("spo2_percent BETWEEN 70 AND 100", name="spo2_percent_range"),
-        CheckConstraint("skin_temp_c BETWEEN 30 AND 43", name="skin_temp_c_range"),
         CheckConstraint(
-            "heart_rate IS NOT NULL OR hrv_ms IS NOT NULL OR eda_microsiemens IS NOT NULL "
-            "OR spo2_percent IS NOT NULL OR skin_temp_c IS NOT NULL OR eeg_value IS NOT NULL",
-            name="at_least_one_reading",
+            "arousal_input_mode IS NULL OR arousal_input_mode IN ('manual', 'detailed')",
+            name="arousal_input_mode_values",
+        ),
+        CheckConstraint(
+            "(arousal_z IS NULL OR arousal_z IN (-2, -1, 0, 1, 2)) "
+            "AND (perceived_heart_rate IS NULL "
+            "OR perceived_heart_rate IN (-2, -1, 0, 1, 2)) "
+            "AND (perceived_heartbeat_steadiness IS NULL "
+            "OR perceived_heartbeat_steadiness IN (-2, -1, 0, 1, 2)) "
+            "AND (perceived_sweating IS NULL "
+            "OR perceived_sweating IN (-2, -1, 0, 1, 2)) "
+            "AND (perceived_respiration IS NULL "
+            "OR perceived_respiration IN (-2, -1, 0, 1, 2)) "
+            "AND (perceived_temperature_difference IS NULL "
+            "OR perceived_temperature_difference IN (-2, -1, 0, 1, 2))",
+            name="arousal_values_discrete",
+        ),
+        CheckConstraint(
+            "(arousal_input_mode IS NULL AND arousal_z IS NULL "
+            "AND perceived_heart_rate IS NULL AND perceived_heartbeat_steadiness IS NULL "
+            "AND perceived_sweating IS NULL AND perceived_respiration IS NULL "
+            "AND perceived_temperature_difference IS NULL) "
+            "OR (arousal_input_mode = 'manual' AND arousal_z IS NOT NULL "
+            "AND perceived_heart_rate IS NULL AND perceived_heartbeat_steadiness IS NULL "
+            "AND perceived_sweating IS NULL AND perceived_respiration IS NULL "
+            "AND perceived_temperature_difference IS NULL) "
+            "OR (arousal_input_mode = 'detailed' AND arousal_z IS NULL "
+            "AND perceived_heart_rate IS NOT NULL "
+            "AND perceived_heartbeat_steadiness IS NOT NULL "
+            "AND perceived_sweating IS NOT NULL AND perceived_respiration IS NOT NULL "
+            "AND perceived_temperature_difference IS NOT NULL)",
+            name="arousal_input_contract",
         ),
         Index("ix_checkins_user_id_entered_at", "user_id", desc("entered_at")),
     )

@@ -5,6 +5,4 @@
 *.py[cod]
 .pytest_cache/
 README.md
-pyproject.toml
 uv.lock
-compose.yaml

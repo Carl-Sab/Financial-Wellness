@@ -34,7 +34,6 @@ class ImpulseModel:
     """Configured prediction model containing fixed and fitted coefficients."""
 
     base_coefficients: Mapping[str, float]
-    marketing_scores: Mapping[str, float]
     theta_arousal: float
     theta_arousal_valence: float
 
@@ -79,7 +78,7 @@ class ImpulseModel:
         utilitarian_value: float,
         normative_evaluation: float,
         self_control: float,
-        store_category: str,
+        marketing_score: float,
         valence: int,
         arousal_z: float,
     ) -> ImpulsePrediction:
@@ -91,11 +90,10 @@ class ImpulseModel:
         n = self._validate_range("normative_evaluation", normative_evaluation, 1, 5)
         sc = self._validate_range("self_control", self_control, 1, 5)
         a = self._validate_number("arousal_z", arousal_z)
+        marketing = self._validate_range("marketing_score", marketing_score, 0, 1)
 
         if isinstance(valence, bool) or valence not in {-2, -1, 0, 1, 2}:
             raise ValueError("valence must be one of -2, -1, 0, 1, or 2")
-        if not isinstance(store_category, str) or not store_category.strip():
-            raise ValueError("store_category must be a non-empty string")
 
         t_z = self._z_score("T", t, normalization)
         h_z = self._z_score("H", h, normalization)
@@ -103,12 +101,6 @@ class ImpulseModel:
         n_z = self._z_score("N", n, normalization)
         sc_z = self._z_score("SC", sc, normalization)
 
-        category_lookup = {
-            key.casefold(): float(value) for key, value in self.marketing_scores.items()
-        }
-        marketing_score = category_lookup.get(
-            store_category.strip().casefold(), category_lookup["other"]
-        )
         pm_proxy = float(max(valence, 0))
         nm_proxy = float(max(-valence, 0))
 
@@ -117,7 +109,7 @@ class ImpulseModel:
             + self.base_coefficients["H"] * h_z
             + self.base_coefficients["U"] * u_z
             + self.base_coefficients["N"] * n_z
-            + self.base_coefficients["M"] * marketing_score
+            + self.base_coefficients["M"] * marketing
             + self.base_coefficients["SC"] * sc_z
         )
         valence_component = (
@@ -139,7 +131,7 @@ class ImpulseModel:
             u_z=u_z,
             n_z=n_z,
             sc_z=sc_z,
-            marketing_score=marketing_score,
+            marketing_score=marketing,
             pm_proxy=pm_proxy,
             nm_proxy=nm_proxy,
             fixed_base=fixed_base,

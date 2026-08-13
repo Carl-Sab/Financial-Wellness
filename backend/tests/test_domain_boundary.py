@@ -10,14 +10,7 @@ other side of the line.
 import ast
 from pathlib import Path
 
-AROUSAL_MODULES = {
-    "wellness.models.checkins",
-    "wellness.models.baseline",
-    "wellness.models.arousal",
-    "wellness.models.biometric_samples",
-    "wellness.services.baseline",
-    "wellness.services.arousal",
-}
+AROUSAL_MODULES = {"wellness.models.checkins"}
 SPENDING_MODULES = {
     "wellness.models.transactions",
     "wellness.models.financial",
@@ -28,11 +21,6 @@ SPENDING_MODULES = {
 _SRC = Path(__file__).resolve().parent.parent / "src"
 _MODULE_PATH = {
     "wellness.models.checkins": _SRC / "wellness/models/checkins.py",
-    "wellness.models.baseline": _SRC / "wellness/models/baseline.py",
-    "wellness.models.arousal": _SRC / "wellness/models/arousal.py",
-    "wellness.models.biometric_samples": _SRC / "wellness/models/biometric_samples.py",
-    "wellness.services.baseline": _SRC / "wellness/services/baseline.py",
-    "wellness.services.arousal": _SRC / "wellness/services/arousal.py",
     "wellness.models.transactions": _SRC / "wellness/models/transactions.py",
     "wellness.models.financial": _SRC / "wellness/models/financial.py",
     "wellness.models.banking": _SRC / "wellness/models/banking.py",

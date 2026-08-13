@@ -1,12 +1,5 @@
-// CATEGORY and VALENCE below still match pretransaction_questionnaire_compact.pdf
-// (repo root) verbatim. The physiological READINGS section does not: the PDF
-// specified self-reported "-2..+2 compared with usual" sliders with no backend
-// anywhere that accepts them. This app links to the OTHER, already-built and
-// tested backend piece instead — the real z-score arousal-scoring pipeline in
-// wellness/services/arousal.py, which needs actual physiological readings
-// (bpm/ms/µS/%/°C), not a self-reported feeling. Field names and range limits
-// below match wellness/schemas/checkins.py's CheckinCreate and the DB's own
-// CHECK constraints exactly.
+// These choices match pretransaction_questionnaire_compact.pdf. Arousal uses
+// five discrete normalized slider stops, not raw wearable units.
 
 // Category codes and labels match categories.code/categories.label in the
 // DB (schema.sql) exactly — this is also PDF section 1's store_category
@@ -38,37 +31,68 @@ export const VALENCE_LEVELS = [
   { valence: "very_pleasant", valence_z: 2, label: "Very positive / pleasant" },
 ];
 
-// Real physiological readings the arousal-scoring pipeline actually scores
-// (wellness/services/arousal.py's _METRIC_SPEC) — field names match
-// CheckinCreate exactly, min/max match the DB's own CHECK constraints.
-// `quick: true` = shown in Quick mode; every field shows in Detailed mode.
-// All are individually optional — the backend only requires at least one
-// non-null reading total (checkins.at_least_one_reading), which is exactly
-// the rule the submit button below enforces, not a stricter invented one.
-export const READINGS_QUESTION = "What are your readings right now?";
-export const READINGS_HINT =
-  "Fill in what you know — even one reading is enough. Check a smartwatch or fitness tracker, or count your pulse for 15 seconds and multiply by 4 for heart rate.";
+export const AROUSAL_QUESTION = "How does your body feel compared with usual?";
+export const AROUSAL_VALUES = [-2, -1, 0, 1, 2];
 
-export const READINGS = [
-  { field: "heart_rate", label: "Heart rate", unit: "bpm", min: 30, max: 220, step: 1, quick: true },
-  { field: "hrv_ms", label: "Heart rate variability", unit: "ms", min: 1, max: 300, step: 1, quick: false },
+export const QUICK_AROUSAL = {
+  field: "arousal_z",
+  label: "Overall arousal",
+  prompt: "Choose your overall arousal level right now.",
+  scaleLabels: ["Much lower", "Lower", "Usual", "Higher", "Much higher"],
+};
+
+export const DETAILED_AROUSAL = [
   {
-    field: "eda_microsiemens",
-    label: "Skin conductance (EDA)",
-    unit: "µS",
-    min: 0,
-    max: 100,
-    step: 0.1,
-    quick: false,
+    field: "perceived_heart_rate",
+    label: "Heart rate",
+    prompt: "Compared with usual, how fast is your heart beating?",
+    scaleLabels: ["Much slower", "Slower", "Usual", "Faster", "Much faster"],
   },
-  { field: "spo2_percent", label: "Blood oxygen (SpO2)", unit: "%", min: 70, max: 100, step: 1, quick: false },
   {
-    field: "skin_temp_c",
-    label: "Skin temperature",
-    unit: "°C",
-    min: 30,
-    max: 43,
-    step: 0.1,
-    quick: false,
+    field: "perceived_heartbeat_steadiness",
+    label: "Heartbeat steadiness",
+    prompt: "Compared with usual, how steady does your heartbeat feel?",
+    scaleLabels: [
+      "Much less steady",
+      "Less steady",
+      "Usual",
+      "More steady",
+      "Much steadier",
+    ],
+  },
+  {
+    field: "perceived_sweating",
+    label: "Sweating / clamminess",
+    prompt: "Compared with usual, how sweaty or clammy do you feel?",
+    scaleLabels: ["Much drier", "Drier", "Usual", "Sweatier", "Much sweatier"],
+  },
+  {
+    field: "perceived_respiration",
+    label: "Breathing",
+    prompt: "Compared with usual, how does your breathing feel?",
+    scaleLabels: [
+      "Much slower",
+      "Slower",
+      "Usual",
+      "Faster",
+      "Much faster",
+    ],
+  },
+  {
+    field: "perceived_temperature_difference",
+    label: "Skin temperature difference",
+    prompt: "How much does your skin temperature feel different than usual?",
+    scaleLabels: [
+      "Much more stable",
+      "More stable",
+      "Usual",
+      "More different",
+      "Much more different",
+    ],
   },
 ];
+
+export const QUICK_AROUSAL_HINT =
+  "Set one overall value. This value goes directly to prediction and bypasses the arousal model.";
+export const DETAILED_AROUSAL_HINT =
+  "Set all five values separately. Each slider snaps to -2, -1, 0, 1, or 2.";

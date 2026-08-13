@@ -11,62 +11,61 @@ pattern — the app can nudge them before an impulse becomes a transaction.
 
 ## Running the app
 
-You need Docker, [`uv`](https://docs.astral.sh/uv/), and Node installed.
-There are two parts: the API (`backend/`) and the actual app (`web/`) — a
-React site with a landing page, sign up, and log in, all working end to end.
+The complete local stack is defined by the single `compose.yaml` in the
+repository root. You only need Docker Desktop; Python, `uv`, Node, and
+PostgreSQL run inside their containers.
 
 ### One-time setup
 
+```powershell
+Copy-Item .env.example .env
 ```
-cd backend
-docker compose up -d              # starts Postgres
-uv sync                           # installs backend dependencies
-cp .env.example .env
-```
-Then open `backend/.env` and set `JWT_SECRET` — the app **will not start**
-without it (no placeholder default is shipped, on purpose: see the comment
-in `.env.example`). Generate one and paste it in:
-```
+
+Open the new root `.env` and replace `JWT_SECRET` with a long random value.
+For example:
+
+```powershell
 python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
-`API_KEY_SECRET_FROM_EURISKO` in `.env` is only needed for the AI report
-feature (see below) — everything else works without it.
 
-```
-uv run alembic upgrade head       # creates all the tables
-cd ../web
-npm install                       # installs frontend dependencies
-```
+`API_KEY_SECRET_FROM_EURISKO` is optional and only needed for the AI-written
+correlation report.
 
-### Every time after that
+### Start everything
 
-Three terminals, all left running:
+From the repository root:
 
-**1. Database** (`backend/`, if it's not already up):
-```
-docker compose up -d
+```powershell
+docker compose up --build -d
 ```
 
-**2. API** (`backend/`):
-```
-uv run uvicorn wellness.main:app --reload --port 8000
-```
-Confirm it's up at `http://localhost:8000/docs`.
+This starts PostgreSQL, waits for it to become healthy, applies every Alembic
+migration, starts FastAPI, and finally starts the React app. Open:
 
-**3. The app** (`web/`):
-```
-npm run dev
-```
-Open `http://localhost:5173`. `web/vite.config.js` proxies `/api/*` to the
-backend automatically, so nothing else to configure. Register an account, or
-log in if you already have one — that's real now, not a placeholder.
+- App: `http://localhost:5173`
+- API documentation: `http://localhost:8000/docs`
 
-Optional — seed a full realistic demo user (biometric samples, check-ins
-scored through the real arousal pipeline, transactions, a budget, a bank
-ledger) so there's something to look at beyond your own account:
+Useful lifecycle commands:
+
+```powershell
+docker compose logs -f
+docker compose down
 ```
-cd backend
-uv run python scripts/seed_demo_data.py
+
+Optional — seed a full realistic demo user (check-ins, debit purchases,
+salary credits, a budget, and a bank account) so there's something to look
+at beyond your own account:
+
+```powershell
+docker compose exec backend python scripts/seed_demo_data.py
+```
+
+The prediction bundle is currently a one-shot CLI rather than an HTTP service,
+so it is kept behind an optional profile and does not run during normal app
+startup:
+
+```powershell
+docker compose --profile prediction run --rm prediction
 ```
 
 ## How it's put together
@@ -79,18 +78,14 @@ applying `schema.sql` directly, or you'll drift out of sync with the models.
 
 The data model is split into two domains, kept deliberately separate:
 
-- **Arousal-scoring** (`models/checkins.py`, `models/baseline.py`,
-  `models/arousal.py`) — a manual physiological check-in (`Checkin`: heart
-  rate, HRV, EDA, SpO2, skin temp, EEG — all nullable, plus a `valence`
-  rating), the user's own rolling per-metric baseline (`UserBaseline`), and
-  the derived arousal score/label computed from the two (`ArousalState`).
-  Scored on physiology alone, relative to the user's own baseline —
-  spending data plays no role in that computation.
+- **Arousal input** (`models/checkins.py`, `models/arousal.py`) — normalized
+  subjective check-in values and the stored arousal result associated with a
+  check-in. No wearable samples or per-user physiological baseline are stored.
 - **Spending** (`models/transactions.py`, `models/financial.py`,
   `models/banking.py`, `models/goals.py`, `models/categories.py`) —
-  transactions (optionally linked back to the checkin that preceded them via
-  `checkin_id`), versioned financial profile snapshots, bank
-  accounts/ledgers, user-defined spending goals, and the shared spending
+  credit/debit transactions (optionally linked back to the checkin that
+  preceded them via `checkin_id`), versioned financial profile snapshots,
+  bank accounts, user-defined spending goals, and the shared spending
   category lookup table.
 
 **The architectural boundary is enforced by convention, not just code
@@ -107,8 +102,8 @@ impulse tendency, self-control, hedonic/utilitarian shopping traits).
 ## API
 
 `backend/src/wellness/api/v1/` has CRUD routers for every table (users,
-checkins, transactions, arousal-state (read-only), goals, bank accounts/
-ledger, categories, user baseline, questionnaire responses) plus one
+checkins, unified transactions, goals, bank accounts, categories, and
+questionnaire responses) plus one
 analysis endpoint. **All of that is still smoke-test only — no auth applied**
 (see the warning comment at the top of each router file); don't expose it
 beyond local dev as-is.
@@ -205,7 +200,9 @@ you're running it elsewhere.
 ## Project structure
 
 ```
+compose.yaml                  # db + API + web; optional prediction profile
 backend/
+  Dockerfile                 # FastAPI image; migrates before serving
   src/wellness/
     main.py               # FastAPI app entrypoint, CORS (scoped to FRONTEND_ORIGIN)
     config.py              # pydantic-settings — JWT_SECRET etc.
@@ -225,28 +222,25 @@ backend/
       enums.py            # ValenceLevel, ArousalLabel, Level3, ...
       users.py            # User, QuestionnaireResponse
       auth.py             # RefreshToken, LoginFailure (session + rate-limit storage)
-      checkins.py         # Checkin (manual physiological + valence reading)
-      baseline.py          # UserBaseline (per-user, per-metric mean/sd)
-      arousal.py           # ArousalState (derived from checkin vs. baseline)
-      biometric_samples.py  # wearable-sourced readings, feeds baseline/arousal
+      checkins.py         # Checkin (normalized subjective arousal + valence)
+      arousal.py           # ArousalState (stored result per checkin)
       categories.py        # Category (shared spending category lookup)
       transactions.py      # Transaction (optionally linked to a checkin)
       financial.py          # FinancialProfile (versioned, never updated in place)
-      banking.py            # BankAccount, BankLedger
+      banking.py            # BankAccount; movements live in Transaction
       goals.py               # UserGoal
-      notifications.py       # UserSettings, NotificationOutbox, NotificationFeedback
-  alembic/versions/       # source of truth for the DB schema (0001–0006)
+      notifications.py       # NotificationOutbox, NotificationFeedback
+  alembic/versions/       # source of truth for the DB schema (0001–0010)
   scripts/
     mood_spend_correlation.py  # CLI: mood/arousal vs. excess-spend correlation + plots
     seed_demo_data.py           # full realistic demo user — the one to use day to day
-    seed_biometric_samples.py   # just wearable sample data, for one existing user
     seed_test_data.py           # narrower/older seed, for the frontend/ correlation viewer
   tests/
   schema.sql                # human-readable reference copy — NOT applied directly, see above
-  docker-compose.yml       # Postgres
   init.sql
   .env.example
 web/                        # the real frontend — Vite + React
+  Dockerfile                 # Vite development server image
   src/
     pages/                   # LandingPage, Signup, Login, one file per route
     components/landing/      # Header, Hero, Features, HowItWorks, JoinBand, Footer

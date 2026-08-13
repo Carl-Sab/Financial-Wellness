@@ -29,7 +29,8 @@ async def test_user_b_sees_no_transactions_scoped_to_user_a(
     checkin_payload: dict[str, Any] = {
         "category_code": "groceries",
         "valence": "neutral",
-        "heart_rate": 80,
+        "arousal_input_mode": "manual",
+        "arousal_z": 0,
     }
     checkin_resp = await client.post(
         "/api/v1/checkins", json=checkin_payload, headers=headers_a

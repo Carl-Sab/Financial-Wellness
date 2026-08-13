@@ -6,9 +6,8 @@ wellness.models.arousal (the arousal-scoring domain). See the boundary
 comment at the top of transactions.py for the full rationale.
 
 Progress toward a goal is never cached here: no current_spent column. It is
-always computed by summing transactions in the goal's period at read time,
-the same way bank_accounts balances are always summed from bank_ledger
-rather than stored — see the boundary comment in banking.py.
+always computed by summing debit transactions in the goal's period at read
+time, the same source used to derive bank-account balances.
 """
 
 import uuid

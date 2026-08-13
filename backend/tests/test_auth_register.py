@@ -1,6 +1,6 @@
 """Integration tests for POST /api/v1/auth/register — the real signup entry
 point, distinct from the smoke-test CRUD at POST /api/v1/users (see
-test_users.py). Covers the transactional user+user_settings creation, the
+test_users.py). Covers transactional user/account creation, the
 three server-side validations the client-side form can't be trusted to
 enforce, and that the plaintext password never round-trips in a response.
 """
@@ -8,11 +8,12 @@ enforce, and that the plaintext password never round-trips in a response.
 from collections.abc import Callable
 from datetime import date
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wellness.models import BankAccount, BankLedger, User, UserSettings
+from wellness.models import BankAccount, Transaction, User, UserNormalizationSnapshot
 
 
 def _payload(unique: Callable[[str], str], **overrides: object) -> dict[str, object]:
@@ -26,8 +27,8 @@ def _payload(unique: Callable[[str], str], **overrides: object) -> dict[str, obj
     return base
 
 
-async def test_register_creates_user_and_default_settings_in_one_go(
-    client: AsyncClient, unique: Callable[[str], str], db_session: AsyncSession
+async def test_register_creates_user(
+    client: AsyncClient, unique: Callable[[str], str]
 ) -> None:
     resp = await client.post("/api/v1/auth/register", json=_payload(unique))
     assert resp.status_code == 201, resp.text
@@ -39,11 +40,7 @@ async def test_register_creates_user_and_default_settings_in_one_go(
     assert body["timezone"] == "Asia/Beirut"
     assert body["currency"] == "LBP"
 
-    settings_row = await db_session.get(UserSettings, body["id"])
-    assert settings_row is not None
-
-
-async def test_register_creates_bank_account_with_no_ledger_entries(
+async def test_register_creates_empty_bank_account(
     client: AsyncClient, unique: Callable[[str], str], db_session: AsyncSession
 ) -> None:
     resp = await client.post(
@@ -59,11 +56,50 @@ async def test_register_creates_bank_account_with_no_ledger_entries(
     assert account.currency == "USD"
     assert account.is_active is True
     assert account.account_number
+    assert account.opening_balance == 0
 
-    ledger_rows = (
-        await db_session.execute(select(BankLedger).where(BankLedger.account_id == account.id))
+    transactions = (
+        await db_session.execute(select(Transaction).where(Transaction.account_id == account.id))
     ).scalars().all()
-    assert ledger_rows == []
+    assert transactions == []
+
+
+async def test_register_creates_population_normalization_snapshot(
+    client: AsyncClient, unique: Callable[[str], str], db_session: AsyncSession
+) -> None:
+    resp = await client.post("/api/v1/auth/register", json=_payload(unique))
+    assert resp.status_code == 201, resp.text
+    user_id = resp.json()["id"]
+
+    snapshot = (
+        await db_session.execute(
+            select(UserNormalizationSnapshot).where(
+                UserNormalizationSnapshot.user_id == user_id
+            )
+        )
+    ).scalar_one()
+
+    assert snapshot.heart_rate_mean == 0
+    assert snapshot.heart_rate_std == 0
+    assert snapshot.hrv_sdnn_mean == 0
+    assert snapshot.hrv_sdnn_std == 0
+    assert snapshot.skin_conductance_mean == 0
+    assert snapshot.skin_conductance_std == 0
+    assert snapshot.respiration_rate_mean == 0
+    assert snapshot.respiration_rate_std == 0
+    assert snapshot.skin_temperature_mean == 0
+    assert snapshot.skin_temperature_std == 0
+    assert snapshot.impulse_tendency_mean == pytest.approx(2.661558)
+    assert snapshot.impulse_tendency_std == pytest.approx(0.831699)
+    assert snapshot.self_control_mean == pytest.approx(3.037315)
+    assert snapshot.self_control_std == pytest.approx(0.660859)
+    assert snapshot.hedonic_mean == pytest.approx(4.636136363636)
+    assert snapshot.hedonic_std == pytest.approx(1.022405590475)
+    assert snapshot.utilitarian_mean == pytest.approx(4.276041666667)
+    assert snapshot.utilitarian_std == pytest.approx(1.084810087389)
+    assert snapshot.normative_evaluation_mean == pytest.approx(2.985884)
+    assert snapshot.normative_evaluation_std == pytest.approx(0.660152)
+    assert snapshot.recorded_at is not None
 
 
 async def test_register_response_never_contains_plaintext_password(
@@ -175,7 +211,7 @@ async def test_rollback_on_failure_leaves_no_orphaned_user(
 ) -> None:
     """A user created via one email, then a second register attempt reusing
     it fails with 409 — the failed attempt must not leave a second users
-    row or a mismatched user_settings row behind.
+    row behind.
     """
     email = f"{unique('dup')}@example.com"
     first = await client.post("/api/v1/auth/register", json=_payload(unique, email=email))

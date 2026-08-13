@@ -67,7 +67,7 @@ async def test_bank_account_duplicate_account_number_is_409(
     assert second.status_code == 409
 
 
-async def test_bank_account_balance_sums_ledger(
+async def test_bank_account_balance_sums_unified_transactions(
     client: AsyncClient, authed_user: tuple[str, dict[str, str]], unique: Callable[[str], str]
 ) -> None:
     _user_id, headers = authed_user
@@ -77,13 +77,18 @@ async def test_bank_account_balance_sums_ledger(
     account_id = account_resp.json()["id"]
 
     await client.post(
-        "/api/v1/bank-ledger",
+        "/api/v1/transactions",
         json={"account_id": account_id, "direction": "credit", "amount": "200.00"},
         headers=headers,
     )
     await client.post(
-        "/api/v1/bank-ledger",
-        json={"account_id": account_id, "direction": "debit", "amount": "42.50"},
+        "/api/v1/transactions",
+        json={
+            "account_id": account_id,
+            "direction": "debit",
+            "amount": "42.50",
+            "category_code": "groceries",
+        },
         headers=headers,
     )
 

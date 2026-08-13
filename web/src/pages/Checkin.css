@@ -179,7 +179,7 @@
   color: var(--color-ink);
 }
 
-/* --- Physiological readings (Quick/Detailed) --- */
+/* --- Discrete arousal sliders (Quick/Detailed) --- */
 
 .checkin__hint {
   font-size: var(--text-xs);
@@ -188,29 +188,96 @@
   margin-bottom: var(--space-5);
 }
 
-.checkin__readings {
+.checkin__arousal-fields {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-.checkin-reading__wrap {
-  position: relative;
+.checkin-arousal {
+  padding: var(--space-4);
+  background: var(--color-white);
+  border: 1.5px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
 }
 
-.checkin-reading__input {
-  padding-right: 3.25rem;
+.checkin-arousal__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
 }
 
-.checkin-reading__unit {
-  position: absolute;
-  top: 50%;
-  right: 1rem;
-  transform: translateY(-50%);
+.checkin-arousal__label {
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.checkin-arousal__value {
+  min-width: 5.5rem;
+  max-width: 9rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--color-ink);
+  background: var(--color-lime);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-align: center;
+}
+
+.checkin-arousal__prompt {
+  margin-bottom: var(--space-4);
   color: var(--color-text-muted);
-  pointer-events: none;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+.checkin-arousal__slider {
+  width: 100%;
+  height: 1.5rem;
+  margin: 0;
+  accent-color: var(--color-ink);
+  cursor: pointer;
+}
+
+.checkin-arousal__slider:focus-visible {
+  outline: 3px solid var(--color-lime);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.checkin-arousal__ticks {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: -0.15rem;
+  color: var(--color-text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: var(--leading-tight);
+}
+
+.checkin-arousal__ticks span {
+  text-align: center;
+}
+
+.checkin-arousal__ticks span:first-child {
+  text-align: left;
+}
+
+.checkin-arousal__ticks span:last-child {
+  text-align: right;
+}
+
+@media (max-width: 420px) {
+  .checkin-arousal__value {
+    min-width: 4.5rem;
+    font-size: var(--text-xs);
+  }
+
+  .checkin-arousal__ticks {
+    font-size: 0.6rem;
+  }
 }
 
 /* --- Stage 2: prediction box --- */
@@ -236,6 +303,10 @@
   border-left-color: var(--color-clay);
 }
 
+.prediction--error {
+  border-left-color: var(--color-clay);
+}
+
 .prediction__label {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -249,6 +320,13 @@
   font-weight: 700;
   line-height: 1;
   margin-bottom: var(--space-3);
+}
+
+.prediction__tier {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-transform: capitalize;
 }
 
 .prediction__context {

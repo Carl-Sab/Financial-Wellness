@@ -14,6 +14,7 @@ from wellness.api.deps import PageParams, get_current_user, page_params
 from wellness.api.errors import commit_or_409, not_found
 from wellness.db import get_session
 from wellness.models import Transaction, User, UserGoal
+from wellness.models.enums import TransactionDirection
 from wellness.schemas.goals import GoalProgress, UserGoalCreate, UserGoalRead, UserGoalUpdate
 
 router = APIRouter(prefix="/goals", tags=["user_goals"])
@@ -144,6 +145,7 @@ async def get_goal_progress(
 
     query = select(sa_func.coalesce(sa_func.sum(Transaction.amount), 0)).where(
         Transaction.user_id == goal.user_id,
+        Transaction.direction == TransactionDirection.DEBIT,
         Transaction.occurred_at >= window_start,
         Transaction.occurred_at < window_end,
     )

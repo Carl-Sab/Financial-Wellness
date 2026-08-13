@@ -2,16 +2,14 @@
 
 Spending-domain, read-only. This is the one place allowed to read across both
 sides of the arousal/spending boundary: it imports wellness.models.checkins
-and wellness.models.arousal (physiology) alongside wellness.models.transactions,
-financial, and goals (spending), in order to compare mood against spending
+alongside wellness.models.transactions, financial, and goals (spending), in
+order to compare mood against spending
 behaviour — that comparison is the entire point of this module.
 
-The boundary rule is one-directional, not mutual: the arousal-scoring domain
-(wellness.models.checkins/baseline/arousal, wellness.services.baseline/arousal)
+The boundary rule is one-directional, not mutual: the check-in/arousal domain
 must never import spending. Nothing about that direction changes here — this
-module is simply not part of either side. It is never imported BY anything in
-the arousal domain, so wellness.services.baseline/arousal still cannot reach
-spending data even transitively through this file. See
+module is simply not part of either side. It is never imported by anything in
+the arousal domain. See
 tests/test_domain_boundary.py, which this module is deliberately excluded
 from (it isn't spending-domain code in the sense that test enforces; it's the
 analysis layer sitting on top of both).
@@ -24,9 +22,8 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wellness.models.arousal import ArousalState
 from wellness.models.checkins import Checkin
-from wellness.models.enums import ArousalLabel, ValenceLevel
+from wellness.models.enums import TransactionDirection, ValenceLevel
 from wellness.models.financial import FinancialProfile
 from wellness.models.goals import UserGoal
 from wellness.models.transactions import Transaction
@@ -68,7 +65,10 @@ async def _resolve_daily_budget(
         )
     ).scalar_one_or_none()
     if daily_goal is not None:
-        return convert(daily_goal.target_amount, daily_goal.currency, display_currency), "goal_daily"
+        converted_daily = convert(
+            daily_goal.target_amount, daily_goal.currency, display_currency
+        )
+        return converted_daily, "goal_daily"
 
     monthly_goal = (
         await session.execute(
@@ -83,7 +83,9 @@ async def _resolve_daily_budget(
         )
     ).scalar_one_or_none()
     if monthly_goal is not None:
-        monthly_target = convert(monthly_goal.target_amount, monthly_goal.currency, display_currency)
+        monthly_target = convert(
+            monthly_goal.target_amount, monthly_goal.currency, display_currency
+        )
         return monthly_target / _DAYS_PER_MONTH, "goal_monthly"
 
     profile = (
@@ -101,17 +103,17 @@ async def _resolve_daily_budget(
 
 
 def _classify(
-    label: ArousalLabel | None, valence: ValenceLevel | None, has_checkin: bool
-) -> str | None:
-    """Returns the mood bucket name, or None if the transaction is excluded
-    from analysis entirely (unknown/missing arousal label). Order matters:
-    stress is checked before valence.
+    arousal_z: float | None, valence: ValenceLevel | None, has_checkin: bool
+) -> str:
+    """Classify a transaction from the check-in's direct inputs.
+
+    Positive Quick-mode arousal (1 or 2) takes priority as stressed. Detailed
+    check-ins have no combined arousal value yet, so they fall through to
+    valence instead of being discarded.
     """
     if not has_checkin:
         return "unclassified"
-    if label is None or label == ArousalLabel.UNKNOWN:
-        return None
-    if label == ArousalLabel.HIGH:
+    if arousal_z is not None and arousal_z >= 1:
         return "stressed"
     if valence in (ValenceLevel.PLEASANT, ValenceLevel.VERY_PLEASANT):
         return "positive"
@@ -163,7 +165,9 @@ async def get_mood_spending_analysis(
 
     # Amounts convert to display_currency before summing/comparing, since a
     # user's transactions can be logged in a mix of LBP and USD.
-    converted_amount = converted_amount_expr(Transaction.amount, Transaction.currency, display_currency)
+    converted_amount = converted_amount_expr(
+        Transaction.amount, Transaction.currency, display_currency
+    )
 
     # Cumulative same-day spend, in transaction order — the window function
     # the task calls for, not a Python loop. ROWS (not the default RANGE)
@@ -181,14 +185,14 @@ async def get_mood_spending_analysis(
             Transaction.occurred_at,
             Transaction.checkin_id,
             Checkin.valence,
-            ArousalState.label,
+            Checkin.arousal_z,
             running_total,
         )
         .select_from(Transaction)
         .outerjoin(Checkin, Checkin.id == Transaction.checkin_id)
-        .outerjoin(ArousalState, ArousalState.checkin_id == Transaction.checkin_id)
         .where(
             Transaction.user_id == user_id,
+            Transaction.direction == TransactionDirection.DEBIT,
             Transaction.occurred_at >= from_date,
             Transaction.occurred_at < to_date + timedelta(days=1),
         )
@@ -201,10 +205,8 @@ async def get_mood_spending_analysis(
         period: {mood: [] for mood in _MOOD_NAMES} for period in periods
     }
 
-    for amount, occurred_at, checkin_id, valence, label, running in rows:
-        mood = _classify(label, valence, checkin_id is not None)
-        if mood is None:
-            continue  # excluded: unknown/missing arousal label
+    for amount, occurred_at, checkin_id, valence, arousal_z, running in rows:
+        mood = _classify(arousal_z, valence, checkin_id is not None)
         period = _period_for_date(periods, occurred_at.date())
         if period is None:
             continue  # outside the requested range; shouldn't happen

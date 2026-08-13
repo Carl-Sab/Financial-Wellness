@@ -1,6 +1,0 @@
-services:
-  prediction:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: eurisko-combined-prediction:local

@@ -5,7 +5,7 @@ carries no arousal or financial logic of its own, so referencing it from
 either domain does not cross the boundary documented in transactions.py.
 """
 
-from sqlalchemy import REAL, Text
+from sqlalchemy import REAL, CheckConstraint, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,3 +31,11 @@ class Category(Base):
     distribution_level: Mapped[Level3] = mapped_column(level_3_enum, nullable=False)
     # Derived, 0-1; see schema.sql section 8/10 for the formula and seed UPDATE.
     stimuli_score: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    # Canonical category value supplied to the impulse prediction model.
+    marketing_score: Mapped[float] = mapped_column(REAL, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "marketing_score BETWEEN 0 AND 1", name="marketing_score_range"
+        ),
+    )

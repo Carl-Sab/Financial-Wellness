@@ -4,11 +4,13 @@ daily/weekly/monthly spend overview.
 
 import calendar
 from collections.abc import Awaitable, Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
 from httpx import AsyncClient
+
+from wellness.api.v1.spending import _derived_target
 
 _BEIRUT = ZoneInfo("Asia/Beirut")
 
@@ -32,6 +34,29 @@ async def test_no_transactions_gets_zeros_not_nulls_or_error(
     # is a real, valid zero, not missing data.
     assert Decimal(body["balance"]) == Decimal("0")
     assert body["currency"] == "LBP"
+
+
+async def test_account_credit_changes_balance_but_not_spending(
+    client: AsyncClient, authed_user: tuple[str, dict[str, str]]
+) -> None:
+    _user_id, headers = authed_user
+    account = (await client.get("/api/v1/bank-accounts", headers=headers)).json()[0]
+    credit = await client.post(
+        "/api/v1/transactions",
+        json={
+            "account_id": account["id"],
+            "direction": "credit",
+            "amount": "500000.00",
+            "description": "Salary",
+        },
+        headers=headers,
+    )
+    assert credit.status_code == 201, credit.text
+
+    summary = (await client.get("/api/v1/spending/summary", headers=headers)).json()
+    for window in ("daily", "weekly", "monthly"):
+        assert Decimal(summary[window]["spent"]) == Decimal("0")
+    assert Decimal(summary["balance"]) == Decimal("500000.00")
 
 
 async def test_daily_window_uses_the_users_timezone_not_utc(
@@ -74,15 +99,30 @@ async def test_daily_window_uses_the_users_timezone_not_utc(
 def _expected_daily_target(monthly_target: Decimal) -> Decimal:
     today = date.today()
     days_in_month = calendar.monthrange(today.year, today.month)[1]
-    return (monthly_target / Decimal(days_in_month)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return (monthly_target / Decimal(days_in_month)).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+
+
+def _expected_allocated_target(
+    monthly_target: Decimal, allocation_start: date, allocation_end: date
+) -> Decimal:
+    total = Decimal("0")
+    allocation_day = allocation_start
+    while allocation_day <= allocation_end:
+        days_in_month = calendar.monthrange(
+            allocation_day.year, allocation_day.month
+        )[1]
+        total += monthly_target / Decimal(days_in_month)
+        allocation_day += timedelta(days=1)
+    return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def test_weekly_and_daily_targets_derive_from_the_monthly_budget(
     client: AsyncClient, authed_user: tuple[str, dict[str, str]]
 ) -> None:
-    """Onboarding only ever creates a monthly goal — with no explicit
-    weekly/daily goal, their targets are derived from it: weekly flat by 4,
-    daily by the number of days in the current calendar month."""
+    """A new budget is prorated from today through the end of its first
+    month, while its weekly target sums the applicable calendar days."""
     _user_id, headers = authed_user
     budget_resp = await client.post(
         "/api/v1/onboarding/budget", json={"monthly_budget": "2000000"}, headers=headers
@@ -98,18 +138,58 @@ async def test_weekly_and_daily_targets_derive_from_the_monthly_budget(
 
     summary = (await client.get("/api/v1/spending/summary", headers=headers)).json()
 
+    today = date.today()
+    month_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+    week_end = today + timedelta(days=6 - today.weekday())
     expected_daily_target = _expected_daily_target(Decimal("2000000"))
+    expected_weekly_target = _expected_allocated_target(
+        Decimal("2000000"), today, week_end
+    )
+    expected_monthly_target = _expected_allocated_target(
+        Decimal("2000000"), today, month_end
+    )
     assert Decimal(summary["daily"]["target"]) == expected_daily_target
     assert Decimal(summary["daily"]["spent"]) == Decimal("1650000.00")
     assert Decimal(summary["daily"]["remaining"]) == expected_daily_target - Decimal("1650000.00")
 
-    assert Decimal(summary["weekly"]["target"]) == Decimal("500000.00")
+    assert Decimal(summary["weekly"]["target"]) == expected_weekly_target
     assert Decimal(summary["weekly"]["spent"]) == Decimal("1650000.00")
-    assert Decimal(summary["weekly"]["remaining"]) == Decimal("500000.00") - Decimal("1650000.00")
+    assert Decimal(summary["weekly"]["remaining"]) == (
+        expected_weekly_target - Decimal("1650000.00")
+    )
 
-    assert Decimal(summary["monthly"]["target"]) == Decimal("2000000")
+    assert Decimal(summary["monthly"]["target"]) == expected_monthly_target
     assert Decimal(summary["monthly"]["spent"]) == Decimal("1650000.00")
-    assert Decimal(summary["monthly"]["remaining"]) == Decimal("350000.00")
+    assert Decimal(summary["monthly"]["remaining"]) == (
+        expected_monthly_target - Decimal("1650000.00")
+    )
+
+
+def test_first_month_includes_the_budget_activation_day() -> None:
+    target = _derived_target(
+        Decimal("3100"),
+        "monthly",
+        date(2026, 1, 1),
+        date(2026, 1, 17),
+        None,
+    )
+
+    # January 17 through January 31 inclusive is 15 days at 100/day.
+    assert target == Decimal("1500.00")
+
+
+def test_weekly_target_is_weighted_across_month_boundaries() -> None:
+    target = _derived_target(
+        Decimal("3100"),
+        "weekly",
+        date(2026, 1, 26),
+        date(2026, 1, 1),
+        None,
+    )
+
+    # Six January days at 3100/31 plus one February day at 3100/28.
+    expected = Decimal(6) * Decimal("100") + Decimal("3100") / Decimal(28)
+    assert target == expected.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def test_explicit_period_goal_overrides_the_derived_monthly_figure(
@@ -162,9 +242,21 @@ async def test_usd_budget_converts_lbp_transactions_at_the_fixed_rate(
 
     summary = (await client.get("/api/v1/spending/summary", headers=headers)).json()
     assert summary["currency"] == "LBP"
-    assert Decimal(summary["monthly"]["target"]) == Decimal("9000000.00")
+    today = date.today()
+    month_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+    week_end = today + timedelta(days=6 - today.weekday())
+    expected_monthly_target = _expected_allocated_target(
+        Decimal("9000000"), today, month_end
+    )
+    expected_weekly_target = _expected_allocated_target(
+        Decimal("9000000"), today, week_end
+    )
+
+    assert Decimal(summary["monthly"]["target"]) == expected_monthly_target
     assert Decimal(summary["monthly"]["spent"]) == Decimal("4500000.00")
-    assert Decimal(summary["monthly"]["remaining"]) == Decimal("4500000.00")
+    assert Decimal(summary["monthly"]["remaining"]) == (
+        expected_monthly_target - Decimal("4500000.00")
+    )
 
     # Regression check: converting $100 -> LBP must happen *before* dividing
     # into daily/weekly shares, not after — dividing in USD first and
@@ -172,7 +264,7 @@ async def test_usd_budget_converts_lbp_transactions_at_the_fixed_rate(
     # USD rounding error into a large LBP one (e.g. $3.23 vs the true
     # $3.225806... is only a fraction of a cent off, but times 90,000 that's
     # off by hundreds of LBP).
-    assert Decimal(summary["weekly"]["target"]) == Decimal("2250000.00")
+    assert Decimal(summary["weekly"]["target"]) == expected_weekly_target
     assert Decimal(summary["daily"]["target"]) == _expected_daily_target(Decimal("9000000"))
 
 
@@ -185,13 +277,18 @@ async def test_balance_matches_bank_account_balance_endpoint(
     account_id = accounts[0]["id"]
 
     await client.post(
-        "/api/v1/bank-ledger",
+        "/api/v1/transactions",
         json={"account_id": account_id, "direction": "credit", "amount": "500000.00"},
         headers=headers,
     )
     await client.post(
-        "/api/v1/bank-ledger",
-        json={"account_id": account_id, "direction": "debit", "amount": "120000.00"},
+        "/api/v1/transactions",
+        json={
+            "account_id": account_id,
+            "direction": "debit",
+            "amount": "120000.00",
+            "category_code": "groceries",
+        },
         headers=headers,
     )
 
@@ -218,7 +315,7 @@ async def test_user_a_summary_never_includes_user_bs_data(
         headers=headers_a,
     )
     await client.post(
-        "/api/v1/bank-ledger",
+        "/api/v1/transactions",
         json={"account_id": a_account_id, "direction": "credit", "amount": "5000000.00"},
         headers=headers_a,
     )

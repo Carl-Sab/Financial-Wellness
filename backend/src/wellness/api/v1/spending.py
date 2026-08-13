@@ -16,17 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from wellness.api.deps import get_current_user
 from wellness.api.v1.goals import _daily_window
 from wellness.db import get_session
-from wellness.models import BankAccount, BankLedger, Transaction, User, UserGoal
-from wellness.models.enums import LedgerDirection
+from wellness.models import BankAccount, Transaction, User, UserGoal
+from wellness.models.enums import TransactionDirection
 from wellness.schemas.spending import SpendingSummary, SpendingWindow
 from wellness.services.currency import convert, converted_amount_expr, quantize
 
 router = APIRouter(prefix="/spending", tags=["spending"])
-
-# weekly = monthly / 4 flat; daily = monthly / days-in-that-calendar-month
-# (28-31) — both fixed by product decision, not derived from anything else.
-WEEKLY_DIVISOR = Decimal("4")
-
 
 def _resolve_timezone(name: str) -> ZoneInfo:
     # Same fallback as goals.py's _daily_window: an invalid IANA name
@@ -66,6 +61,7 @@ async def _spent(
     amount_expr = converted_amount_expr(Transaction.amount, Transaction.currency, display_currency)
     query = select(sa_func.coalesce(sa_func.sum(amount_expr), 0)).where(
         Transaction.user_id == user_id,
+        Transaction.direction == TransactionDirection.DEBIT,
         Transaction.occurred_at >= window_start,
         Transaction.occurred_at < window_end,
     )
@@ -97,16 +93,50 @@ async def _active_period_goal(
     return result.scalar_one_or_none()
 
 
-def _derived_target(monthly_target: Decimal, period: str, period_start: date) -> Decimal:
-    """weekly -> monthly/4 flat; daily -> monthly/days-in-period_start's-month.
-    monthly_target must already be converted into the display currency —
-    converting first and dividing (quantizing once) after avoids compounding
-    a 2dp rounding error at a 90,000:1 rate (e.g. rounding a USD/31 division
-    to the cent before converting to LBP can be off by hundreds of LBP)."""
+def _period_allocation_end(period: str, period_start: date) -> date:
+    if period == "daily":
+        return period_start
     if period == "weekly":
-        return quantize(monthly_target / WEEKLY_DIVISOR)
+        return period_start + timedelta(days=6)
     days_in_month = calendar.monthrange(period_start.year, period_start.month)[1]
-    return quantize(monthly_target / Decimal(days_in_month))
+    return period_start.replace(day=days_in_month)
+
+
+def _derived_target(
+    monthly_target: Decimal,
+    period: str,
+    period_start: date,
+    goal_starts_on: date,
+    goal_ends_on: date | None,
+) -> Decimal:
+    """Sum the monthly budget's calendar-day allocations for a period.
+
+    Each day is worth ``monthly_target / number of days in that day's
+    month``. Consequently, a week crossing a month boundary contains a
+    weighted share of both months instead of the inaccurate monthly/4
+    approximation. The first month is prorated inclusively from the day the
+    budget becomes active.
+
+    ``monthly_target`` must already be in the display currency. We quantize
+    only the final sum so currency conversion and per-day rounding errors do
+    not compound.
+    """
+    allocation_start = max(period_start, goal_starts_on)
+    allocation_end = _period_allocation_end(period, period_start)
+    if goal_ends_on is not None:
+        allocation_end = min(allocation_end, goal_ends_on)
+    if allocation_start > allocation_end:
+        return Decimal("0.00")
+
+    target = Decimal("0")
+    allocation_day = allocation_start
+    while allocation_day <= allocation_end:
+        days_in_month = calendar.monthrange(
+            allocation_day.year, allocation_day.month
+        )[1]
+        target += monthly_target / Decimal(days_in_month)
+        allocation_day += timedelta(days=1)
+    return quantize(target)
 
 
 async def _window_summary(
@@ -124,12 +154,32 @@ async def _window_summary(
     goal = await _active_period_goal(session, user_id, period)
     target: Decimal | None = None
     if goal is not None:
-        target = convert(goal.target_amount, goal.currency, display_currency)
+        converted_target = convert(goal.target_amount, goal.currency, display_currency)
+        if period == "monthly":
+            target = _derived_target(
+                converted_target,
+                period,
+                period_start,
+                goal.starts_on,
+                goal.ends_on,
+            )
+        else:
+            target = converted_target
     elif period in ("weekly", "daily"):
         monthly_goal = await _active_period_goal(session, user_id, "monthly")
         if monthly_goal is not None:
-            monthly_target = convert(monthly_goal.target_amount, monthly_goal.currency, display_currency)
-            target = _derived_target(monthly_target, period, period_start)
+            monthly_target = convert(
+                monthly_goal.target_amount,
+                monthly_goal.currency,
+                display_currency,
+            )
+            target = _derived_target(
+                monthly_target,
+                period,
+                period_start,
+                monthly_goal.starts_on,
+                monthly_goal.ends_on,
+            )
 
     remaining = (target - spent) if target is not None else None
     return SpendingWindow(
@@ -141,10 +191,9 @@ async def _window_summary(
     )
 
 
-@router.get("/summary", response_model=SpendingSummary)
-async def get_spending_summary(
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+async def build_spending_summary(
+    session: AsyncSession,
+    current_user: User,
 ) -> SpendingSummary:
     today_local, daily_start, daily_end = _daily_window(current_user.timezone)
     week_start_local, weekly_start, weekly_end = _weekly_window(current_user.timezone)
@@ -181,17 +230,38 @@ async def get_spending_summary(
         current_user.currency,
     )
 
-    account_ids_query = select(BankAccount.id).where(BankAccount.user_id == current_user.id)
+    opening_amount = converted_amount_expr(
+        BankAccount.opening_balance,
+        BankAccount.currency,
+        current_user.currency,
+    )
+    opening_balance = (
+        await session.execute(
+            select(sa_func.coalesce(sa_func.sum(opening_amount), 0)).where(
+                BankAccount.user_id == current_user.id
+            )
+        )
+    ).scalar_one()
+
+    movement_amount = converted_amount_expr(
+        Transaction.amount,
+        Transaction.currency,
+        current_user.currency,
+    )
     signed_amount = sa_func.sum(
         case(
-            (BankLedger.direction == LedgerDirection.CREDIT, BankLedger.amount),
-            else_=-BankLedger.amount,
+            (Transaction.direction == TransactionDirection.CREDIT, movement_amount),
+            else_=-movement_amount,
         )
     )
-    balance_query = select(sa_func.coalesce(signed_amount, 0)).where(
-        BankLedger.account_id.in_(account_ids_query)
-    )
-    balance: Decimal = (await session.execute(balance_query)).scalar_one()
+    movement_balance = (
+        await session.execute(
+            select(sa_func.coalesce(signed_amount, 0)).where(
+                Transaction.user_id == current_user.id
+            )
+        )
+    ).scalar_one()
+    balance: Decimal = opening_balance + movement_balance
 
     return SpendingSummary(
         currency=current_user.currency,
@@ -200,3 +270,11 @@ async def get_spending_summary(
         monthly=monthly,
         balance=balance,
     )
+
+
+@router.get("/summary", response_model=SpendingSummary)
+async def get_spending_summary(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SpendingSummary:
+    return await build_spending_summary(session, current_user)

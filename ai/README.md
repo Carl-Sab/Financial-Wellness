@@ -5,7 +5,7 @@ This inference-only bundle executes three models as one pipeline:
 1. The CASE model predicts a continuous arousal rating.
 2. The rating is standardized against the emotional CASE training distribution.
 3. The impulse model receives that `arousal_z` and calculates `Z_IB`.
-4. That exact `Z_IB` is passed directly to the overspending model.
+4. That exact `Z_IB` is passed directly to the overspending model.ffg
 5. The overspending model returns the final probability and decision.
 
 Only the three runtime arousal modules are included. The CASE dataset, feature
@@ -31,6 +31,11 @@ impulse model, the impulse calculation, `z_ib_passed`, and the final overspendin
 probability and decision.
 There is deliberately no editable `arousal_z` or `z_ib` field.
 
+`marketing_score` is a numeric input between `0` and `1`. In the application,
+the backend must load it from `categories.marketing_score`; the impulse model
+does not contain a second category-to-score lookup. The value in
+`prediction_inputs.py` is only a standalone demo input.
+
 ## Import the combined pipeline
 
 ```python
@@ -51,19 +56,20 @@ not been refitted or validated against new overspending outcome data.
 
 ## Docker
 
-Start Docker Desktop, then build and run the one-shot prediction container:
+Start Docker Desktop, then run the one-shot prediction container from the
+repository root using the optional prediction profile:
 
 ```powershell
 cd C:\Users\uac\Desktop\Combined_Prediction
-docker compose build
-docker compose run --rm prediction
+docker compose --profile prediction build prediction
+docker compose --profile prediction run --rm prediction
 ```
 
 After editing `prediction_inputs.py`, rebuild before running again:
 
 ```powershell
-docker compose build
-docker compose run --rm prediction
+docker compose --profile prediction build prediction
+docker compose --profile prediction run --rm prediction
 ```
 
 The image contains only `prediction_inputs.py` and the three inference packages

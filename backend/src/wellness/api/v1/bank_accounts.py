@@ -1,6 +1,3 @@
-# No balance column exists anywhere — /balance below always recomputes it by
-# summing bank_ledger. See the boundary comment in wellness.models.banking.
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import case, select
 from sqlalchemy import func as sa_func
@@ -9,14 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from wellness.api.deps import PageParams, get_current_user, page_params
 from wellness.api.errors import commit_or_409, not_found
 from wellness.db import get_session
-from wellness.models import BankAccount, BankLedger, User
-from wellness.models.enums import LedgerDirection
+from wellness.models import BankAccount, Transaction, User
+from wellness.models.enums import TransactionDirection
 from wellness.schemas.banking import (
     BankAccountBalance,
     BankAccountCreate,
     BankAccountRead,
     BankAccountUpdate,
 )
+from wellness.services.currency import converted_amount_expr
 
 router = APIRouter(prefix="/bank-accounts", tags=["bank_accounts"])
 
@@ -102,12 +100,23 @@ async def get_bank_account_balance(
     if account is None or account.user_id != current_user.id:
         raise not_found("bank_account")
 
+    converted_amount = converted_amount_expr(
+        Transaction.amount, Transaction.currency, account.currency
+    )
     signed_amount = sa_func.sum(
         case(
-            (BankLedger.direction == LedgerDirection.CREDIT, BankLedger.amount),
-            else_=-BankLedger.amount,
+            (Transaction.direction == TransactionDirection.CREDIT, converted_amount),
+            else_=-converted_amount,
         )
     )
-    query = select(sa_func.coalesce(signed_amount, 0)).where(BankLedger.account_id == account_id)
-    balance = (await session.execute(query)).scalar_one()
-    return BankAccountBalance(account_id=account_id, balance=balance)
+    movements = (
+        await session.execute(
+            select(sa_func.coalesce(signed_amount, 0)).where(
+                Transaction.account_id == account_id
+            )
+        )
+    ).scalar_one()
+    return BankAccountBalance(
+        account_id=account_id,
+        balance=account.opening_balance + movements,
+    )

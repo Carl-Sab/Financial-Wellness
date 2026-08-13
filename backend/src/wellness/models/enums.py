@@ -15,13 +15,6 @@ class ValenceLevel(enum.StrEnum):
     VERY_PLEASANT = "very_pleasant"
 
 
-class ArousalLabel(enum.StrEnum):
-    CALM = "calm"
-    ELEVATED = "elevated"
-    HIGH = "high"
-    UNKNOWN = "unknown"
-
-
 class OutboxStatus(enum.StrEnum):
     PENDING = "pending"
     SENT = "sent"
@@ -37,6 +30,6 @@ class FeedbackEvent(enum.StrEnum):
     MARKED_NOT_NOW = "marked_not_now"
 
 
-class LedgerDirection(enum.StrEnum):
+class TransactionDirection(enum.StrEnum):
     CREDIT = "credit"
     DEBIT = "debit"

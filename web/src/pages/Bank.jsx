@@ -112,16 +112,19 @@ export default function Bank() {
                 <li key={tx.id} className="bank-page__row">
                   <div className="bank-page__row-main">
                     <span className="bank-page__row-category">
-                      {CATEGORY_LABELS[tx.category_code] ?? tx.category_code}
+                      {CATEGORY_LABELS[tx.category_code] ??
+                        tx.description ??
+                        (tx.direction === "credit" ? "Account credit" : "Account debit")}
                     </span>
-                    {tx.merchant_name && (
-                      <span className="bank-page__row-merchant">{tx.merchant_name}</span>
-                    )}
                   </div>
                   <div className="bank-page__row-side">
                     <span className="bank-page__row-amount">
                       {formatMoney(
-                        convertAmount(tx.amount, tx.currency, displayCurrency),
+                        convertAmount(
+                          tx.direction === "credit" ? tx.amount : -Number(tx.amount),
+                          tx.currency,
+                          displayCurrency
+                        ),
                         displayCurrency
                       )}
                     </span>

@@ -8,9 +8,9 @@ class SpendingWindow(BaseModel):
     period_start: date
     period_end: date
     spent: Decimal
-    # None when no active, all-categories goal exists for this period —
-    # onboarding only ever creates a monthly one, so daily/weekly normally
-    # have no target. That's expected, not an error.
+    # None when no applicable all-categories goal exists. Daily and weekly
+    # targets are normally derived by summing calendar-day allocations from
+    # the active monthly budget.
     target: Decimal | None
     remaining: Decimal | None
 

@@ -1,13 +1,12 @@
-"""Notification preferences, outbox, and delivery feedback.
+"""Notification outbox and delivery feedback.
 
-Downstream of the arousal-scoring domain: notification_outbox references
-checkin_id and carries a snapshotted arousal_score, both as plain columns
-(no ORM relationship), so this module does not need to import
-wellness.models.checkins or wellness.models.arousal.
+The notification outbox references checkin_id and carries a snapshotted
+arousal_score as plain columns, so this module does not need to import the
+check-in model.
 """
 
 import uuid
-from datetime import datetime, time
+from datetime import datetime
 
 from sqlalchemy import (
     REAL,
@@ -16,9 +15,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    SmallInteger,
     Text,
-    Time,
     desc,
     func,
     text,
@@ -46,38 +43,11 @@ feedback_event_enum = SAEnum(
 )
 
 
-class UserSettings(Base):
-    __tablename__ = "user_settings"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
-    )
-    quiet_hours_start: Mapped[time] = mapped_column(
-        Time, nullable=False, default=time(22, 0), server_default="22:00"
-    )
-    quiet_hours_end: Mapped[time] = mapped_column(
-        Time, nullable=False, default=time(8, 0), server_default="08:00"
-    )
-    max_notifs_per_day: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, default=3, server_default="3"
-    )
-    notifications_enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default=text("true")
-    )
-    notifications_muted_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-
-
 class NotificationOutbox(Base):
     """Intended notification, written here before delivery is attempted.
 
-    arousal_score is a snapshot value (not a FK to arousal_state) so the
-    outbox row remains meaningful even if the originating arousal_state row
-    is later removed.
+    arousal_score is a snapshot value rather than a foreign key, so the
+    outbox row remains meaningful if prediction data changes later.
     """
 
     __tablename__ = "notification_outbox"

@@ -16,9 +16,9 @@ Mood axes:
     both derive from the single bipolar `valence` field, their correlations
     with spending are mirror images by construction: r_sadness = -r_happiness.
     That's not a bug to fix — it's what a single bipolar scale means.
-  - arousal: arousal_state.score (0-1), joined via the same checkin_id. Not
-    every checkin has a scored arousal_state row, so this axis can have a
-    smaller n than the mood axes.
+  - arousal: the direct checkins.arousal_z value (-2..2). Detailed check-ins
+    do not have a combined arousal value until the prediction adapter runs,
+    so this axis can have a smaller n than the mood axes.
 
 Excess spend:
   excess_amount = transaction.amount - that user's own average transaction
@@ -40,8 +40,8 @@ from scipy import stats
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wellness.models.arousal import ArousalState
 from wellness.models.checkins import Checkin
+from wellness.models.enums import TransactionDirection
 from wellness.models.transactions import Transaction
 
 VALENCE_TO_NUMERIC = {
@@ -53,7 +53,7 @@ VALENCE_TO_NUMERIC = {
 }
 
 MOOD_COLUMNS = ["happiness_score", "arousal_score", "sadness_score"]
-MOOD_RANGES = {"happiness_score": (-2, 2), "arousal_score": (0, 1), "sadness_score": (-2, 2)}
+MOOD_RANGES = {"happiness_score": (-2, 2), "arousal_score": (-2, 2), "sadness_score": (-2, 2)}
 
 
 async def load_data(session: AsyncSession, user_id: uuid.UUID | None) -> pd.DataFrame:
@@ -68,11 +68,13 @@ async def load_data(session: AsyncSession, user_id: uuid.UUID | None) -> pd.Data
             Transaction.category_code,
             Transaction.occurred_at,
             Checkin.valence,
-            ArousalState.score.label("arousal_score"),
+            Checkin.arousal_z.label("arousal_score"),
         )
         .join(Checkin, Transaction.checkin_id == Checkin.id)
-        .outerjoin(ArousalState, ArousalState.checkin_id == Checkin.id)
-        .where(Transaction.checkin_id.is_not(None))
+        .where(
+            Transaction.checkin_id.is_not(None),
+            Transaction.direction == TransactionDirection.DEBIT,
+        )
     )
     if user_id is not None:
         stmt = stmt.where(Transaction.user_id == user_id)
@@ -100,15 +102,18 @@ def compute_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
     df["valence"] = df["valence"].apply(lambda v: v.value if isinstance(v, enum.Enum) else v)
     df["happiness_score"] = df["valence"].map(VALENCE_TO_NUMERIC)
     df["sadness_score"] = -df["happiness_score"]
-    df["excess_amount"] = df["amount"] - df.groupby(["user_id", "category_code"])["amount"].transform("mean")
+    category_average = df.groupby(["user_id", "category_code"])["amount"].transform(
+        "mean"
+    )
+    df["excess_amount"] = df["amount"] - category_average
     return df
 
 
 def compute_correlations(df: pd.DataFrame) -> pd.DataFrame:
     """Pearson r between excess spend and each mood axis, ranked by |r|.
 
-    Each axis is dropna'd independently since arousal_score is frequently
-    missing (not every checkin gets a scored arousal_state row) while
+    Each axis is dropna'd independently since arousal_score is missing for
+    detailed check-ins until a combined prediction result exists, while
     happiness/sadness (derived from valence) are not.
     """
     rows = []
@@ -118,7 +123,14 @@ def compute_correlations(df: pd.DataFrame) -> pd.DataFrame:
             r, p = float("nan"), float("nan")
         else:
             r, p = stats.pearsonr(sub[mood], sub["excess_amount"])
-        rows.append({"mood": mood.removesuffix("_score"), "pearson_r": r, "p_value": p, "n": len(sub)})
+        rows.append(
+            {
+                "mood": mood.removesuffix("_score"),
+                "pearson_r": r,
+                "p_value": p,
+                "n": len(sub),
+            }
+        )
     return pd.DataFrame(rows).sort_values("pearson_r", key=lambda s: s.abs(), ascending=False)
 
 
@@ -136,7 +148,10 @@ def plot_results(df: pd.DataFrame, correlations: pd.DataFrame, output_dir: Path)
             ax.plot(xs, slope * xs + intercept, color="crimson", linewidth=2)
         row = correlations.loc[correlations["mood"] == label].iloc[0]
         ax.axhline(0, color="black", linewidth=0.6)
-        ax.set_title(f"{label} vs excess spend\nr={row.pearson_r:.2f}, p={row.p_value:.3f}, n={row.n:.0f}")
+        ax.set_title(
+            f"{label} vs excess spend\n"
+            f"r={row.pearson_r:.2f}, p={row.p_value:.3f}, n={row.n:.0f}"
+        )
         ax.set_xlabel(f"{label}_score")
         ax.set_ylabel("excess spend (vs. own category average)")
     fig.tight_layout()

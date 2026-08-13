@@ -24,15 +24,6 @@ model = ImpulseModel(
         "PM": 0.33,
         "NM": 0.19,
     },
-    marketing_scores={
-        "Clothing": 1.00,
-        "Mall": 1.00,
-        "Online": 0.75,
-        "Groceries": 0.75,
-        "Other": 0.25,
-        "Electronics": 0.00,
-        "Restaurant": 0.00,
-    },
     theta_arousal=0.307339295779,
     # Product-rule override: negative valence reverses the arousal effect.
     theta_arousal_valence=0.35,

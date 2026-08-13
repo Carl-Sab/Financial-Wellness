@@ -99,9 +99,9 @@ def make_authed_user(
     client: AsyncClient, unique: Callable[[str], str]
 ) -> Callable[[], Coroutine[Any, Any, tuple[str, dict[str, str]]]]:
     """Factory fixture for the data routers that now require
-    get_current_user (analysis, samples, goals, bank-accounts, bank-ledger,
-    transactions, checkins, arousal-state, user-baseline,
-    questionnaire-responses). Call it to register+log in a fresh real user
+    get_current_user (analysis, goals, bank-accounts,
+    transactions, checkins, and questionnaire-responses). Call it to
+    register+log in a fresh real user
     via the real auth endpoints, returning (user_id, auth_headers). Call it
     twice in one test to get two distinct identities for cross-user
     ownership checks — every call registers a brand-new account, so
@@ -139,24 +139,3 @@ async def authed_user(
 ) -> tuple[str, dict[str, str]]:
     """The common case: a single authenticated identity. (user_id, headers)."""
     return await make_authed_user()
-
-
-@pytest_asyncio.fixture
-async def authed_bank_account(
-    client: AsyncClient,
-    authed_user: tuple[str, dict[str, str]],
-    unique: Callable[[str], str],
-) -> tuple[int, dict[str, str]]:
-    """A bank account created through the API for the authed_user identity,
-    for bank_ledger tests. (account_id, auth_headers) — the headers are the
-    owning user's, needed for every bank_ledger call against this account.
-    """
-    _user_id, headers = authed_user
-    resp = await client.post(
-        "/api/v1/bank-accounts",
-        json={"account_number": unique("ACC")},
-        headers=headers,
-    )
-    assert resp.status_code == 201, resp.text
-    created_id: int = resp.json()["id"]
-    return created_id, headers
