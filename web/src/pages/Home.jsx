@@ -42,12 +42,12 @@ function BankMark() {
   );
 }
 
-async function fetchWeeklyHeartRateAverage() {
-  const response = await apiFetch("/api/v1/samples/averages?period=week");
+async function fetchWeeklyStatistics() {
+  const response = await apiFetch(
+    "/api/v1/analysis/statistics?view=weekly&category_view=daily"
+  );
   if (!response.ok) throw new Error("Failed to load statistics");
-  const buckets = await response.json();
-  // Ascending order (see samples.py) — the last bucket is the current week.
-  return buckets.length > 0 ? buckets[buckets.length - 1] : null;
+  return response.json();
 }
 
 async function fetchSpendingSummary() {
@@ -67,7 +67,7 @@ function CardError({ onRetry }) {
   );
 }
 
-function StatisticsPreview({ status, data, retry }) {
+function StatisticsPreview({ status, data, retry, displayCurrency }) {
   if (status === "loading") {
     return (
       <div className="card__skeleton" aria-hidden="true">
@@ -81,15 +81,58 @@ function StatisticsPreview({ status, data, retry }) {
     return <CardError onRetry={retry} />;
   }
 
-  if (data == null || data.avg_heart_rate == null) {
-    return <p className="card__empty">No readings yet</p>;
-  }
+  const spent = data.review.reduce(
+    (total, bucket) => total + Number(bucket.spent_amount),
+    0
+  );
+  const budget = data.review.reduce(
+    (total, bucket) => total + Number(bucket.budget_amount),
+    0
+  );
+  const displayedSpent = convertAmount(spent, data.currency, displayCurrency);
+  const displayedBudget = convertAmount(budget, data.currency, displayCurrency);
+  const percentage = budget > 0 ? (spent / budget) * 100 : null;
+
+  if (spent === 0) return <p className="card__empty">No spending recorded this week</p>;
 
   return (
-    <p className="card__stat">
-      <span className="card__stat-value">{Math.round(data.avg_heart_rate)}</span>
-      <span className="card__stat-unit">bpm avg this week</span>
-    </p>
+    <div className="statistics-preview">
+      <p className="card__stat statistics-preview__headline">
+        <span className="card__stat-value">
+          {percentage == null
+            ? formatMoney(displayedSpent, displayCurrency)
+            : `${Math.round(percentage)}%`}
+        </span>
+        <span className="card__stat-unit">
+          {percentage == null ? "spent this week" : "of weekly budget"}
+        </span>
+      </p>
+      {percentage != null && (
+        <>
+          <p className="statistics-preview__amounts">
+            {formatMoney(displayedSpent, displayCurrency)} spent of {formatMoney(
+              displayedBudget,
+              displayCurrency
+            )}
+          </p>
+          <div
+            className="statistics-preview__progress"
+            role="progressbar"
+            aria-label="Weekly budget used"
+            aria-valuenow={Math.min(100, Math.round(percentage))}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className={`statistics-preview__progress-fill ${
+                percentage > 100 ? "statistics-preview__progress-fill--over" : ""
+              }`}
+              style={{ width: `${Math.min(100, percentage)}%` }}
+            />
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -210,7 +253,7 @@ function BankPreview({ status, data, retry, displayCurrency, onDisplayCurrencyCh
 export default function Home() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const statistics = useCardData(fetchWeeklyHeartRateAverage);
+  const statistics = useCardData(fetchWeeklyStatistics);
   const bank = useCardData(fetchSpendingSummary);
   const [displayCurrency, setDisplayCurrency] = useDisplayCurrency();
 
@@ -261,7 +304,7 @@ export default function Home() {
           <section id="statistics-card" className="card">
             <StatisticsMark />
             <h2 className="card__title">Statistics</h2>
-            <StatisticsPreview {...statistics} />
+            <StatisticsPreview {...statistics} displayCurrency={displayCurrency} />
             <Button as="link" to="/statistics" variant="dark" className="card__cta">
               View statistics
             </Button>

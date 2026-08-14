@@ -28,8 +28,9 @@ For example:
 python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-`API_KEY_SECRET_FROM_EURISKO` is optional and only needed for the AI-written
-correlation report.
+`API_KEY_SECRET_FROM_EURISKO` is optional. When present, it enables AI wording
+for the statistics relationship summary; without it, the same server-verified
+patterns use a deterministic local summary.
 
 ### Start everything
 
@@ -52,12 +53,12 @@ docker compose logs -f
 docker compose down
 ```
 
-Optional — seed a full realistic demo user (check-ins, debit purchases,
-salary credits, a budget, and a bank account) so there's something to look
-at beyond your own account:
+Optional — seed four repeatable demo users with 420 days of check-ins, debit
+purchases, salary credits, budgets, categories, and deliberately different
+mood/arousal patterns:
 
 ```powershell
-docker compose exec backend python scripts/seed_demo_data.py
+docker compose exec backend python scripts/seed_correlation_demo_accounts.py
 ```
 
 The prediction bundle is currently a one-shot CLI rather than an HTTP service,
@@ -119,39 +120,32 @@ gating other routes the same way, just isn't used anywhere yet.
 Run command is in "Running the app" above; interactive docs at
 `http://localhost:8000/docs` once it's up.
 
-### Mood/arousal vs. excess-spend correlation
+### Spending statistics
 
-`GET /api/v1/analysis/mood-spend-correlation?user_id=<uuid>&include_ai_report=true`
+`GET /api/v1/analysis/statistics?view=weekly&anchor=2026-08-12`
 
-Answers: does how someone feels at the moment of a purchase relate to how
-much *more* than usual they spend? The core logic lives in
-[`wellness/analysis/mood_spend.py`](backend/src/wellness/analysis/mood_spend.py)
-and is shared between this endpoint and the CLI script below, so they can't
-drift apart.
+The authenticated statistics endpoint derives, without storing rollups:
 
-- Only looks at transactions with a linked checkin (`transactions.checkin_id`)
-  — that's what carries the mood data.
-- **Happiness** / **sadness**: `checkins.valence` mapped to a numeric
-  −2..+2 scale, sadness being the sign-flipped read of the same scale (so
-  their correlations with spend are mirror images of each other by
-  construction — not two independent findings).
-- **Arousal**: `arousal_state.score` (0-1), joined via the same checkin.
-- **Excess spend**: `transaction.amount` minus that user's own average
-  transaction amount in the same category — the same "relative to your own
-  baseline" logic the app already uses for arousal itself, applied to spend.
+- a weekly review by day, monthly review by calendar week, or yearly review
+  by month;
+- spending displayed as a budget percentage, with `100%` as the allocated
+  budget and the corresponding currency amount beside each chart value;
+- one point per local calendar day for positive mood, negative mood, and
+  arousal against normalized spending; and
+- a category breakdown with independent daily, weekly, monthly, and yearly
+  views; and
+- a friendly summary of the three relationship charts. Spearman values and
+  sample-size classifications are calculated on the server; only those
+  verified results are sent to the AI, never transactions, graph images, or
+  personal details. A local summary is used if the AI is unavailable.
 
-Returns the correlation table, the two plots as base64 PNGs, and — if
-`include_ai_report=true` and `API_KEY_SECRET_FROM_EURISKO` is set — a
-written report from Claude (via the same Pydantic AI Gateway key used in the
-game-store project;
-[`wellness/analysis/report.py`](backend/src/wellness/analysis/report.py)
-has the prompt).
-
-There's also a CLI version for terminal use:
-```
-uv run python scripts/mood_spend_correlation.py [--user-id UUID] [--skip-ai-report]
-```
-Plots and the AI report land in `scripts/output/`.
+When a day contains several purchases, mood and arousal are weighted by each
+checked-in purchase's share of checked-in spending. Positive and negative
+valence are split before weighting, while arousal remains signed. All debit
+transactions count toward the day's spending total, including purchases with
+no check-in. The single monthly prototype budget is allocated using the real
+number of days in each calendar month and is prorated before its `starts_on`
+date.
 
 ## Frontend
 
@@ -159,19 +153,6 @@ Plots and the AI report land in `scripts/output/`.
 two-step sign up, log in, and a working JWT session (in-memory access
 token, httpOnly-cookie refresh token that survives a page reload). Run
 command is in "Running the app" above.
-
-`frontend/` is a separate, older tool — a plain HTML/JS page (no build
-step, no relation to `web/`) that calls the mood/spend correlation endpoint
-below and renders a table, two plots, and an AI report as markdown:
-```
-cd frontend
-python -m http.server 5500
-```
-Open `http://localhost:5500`. It needs a user ID — `uv run python
-scripts/seed_test_data.py` (in `backend/`, a narrower/older seed than
-`seed_demo_data.py` above) prints one you can paste in. Expects the API on
-`http://localhost:8000` — change `API_BASE_URL` in `frontend/js/app.js` if
-you're running it elsewhere.
 
 ## Current status
 
@@ -186,9 +167,8 @@ you're running it elsewhere.
   (`wellness/api/deps.py`) but isn't applied to any router yet.
 - ✅ `web/` — the real frontend: landing page, working sign up / log in
   against the auth endpoints above
-- ✅ `GET /api/v1/analysis/mood-spend-correlation` + the older plain HTML/JS
-  viewer for it (`frontend/`)
-- ✅ `scripts/mood_spend_correlation.py` — CLI version of the same analysis
+- ✅ Authenticated `GET /api/v1/analysis/statistics` with weekly, monthly,
+  yearly, category, mood, and arousal views
 - ✅ Arousal-scoring is live: creating a checkin (`POST /api/v1/checkins`)
   triggers baseline recomputation and arousal scoring for real, no manual
   step needed
@@ -247,10 +227,6 @@ web/                        # the real frontend — Vite + React
     context/AuthContext.jsx  # access token in memory, refresh-on-mount, login/logout/register
     lib/api.js                # fetch wrapper: attaches the token, retries once on 401
   vite.config.js            # proxies /api/* to the backend — no CORS setup needed in dev
-frontend/                   # older, separate — plain HTML/JS correlation viewer
-  index.html
-  js/app.js
-  css/style.css
 ```
 
 ## Dev tooling

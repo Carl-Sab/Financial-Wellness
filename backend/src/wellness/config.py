@@ -24,8 +24,8 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
 
-    # Optional: only needed for scripts/mood_spend_correlation.py's AI report
-    # step. Left optional (rather than required) so importing wellness.db —
+    # Optional: enables the in-app relationship summary's AI wording and the
+    # standalone correlation report. Left optional so importing wellness.db —
     # which builds the engine at module load time — doesn't fail for every
     # other use of this app just because this one key isn't set yet.
     gateway_api_key: str | None = Field(default=None, validation_alias="API_KEY_SECRET_FROM_EURISKO")
