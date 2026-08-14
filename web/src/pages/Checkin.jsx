@@ -48,6 +48,26 @@ function initialDetailedArousal() {
 // amount: the transaction amount. success: recorded.
 const STAGES = ["form", "prediction", "amount", "success"];
 
+async function apiErrorMessage(response, fallback) {
+  try {
+    const body = await response.json();
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail)) {
+      return body.detail
+        .map((issue) => {
+          const field = Array.isArray(issue.loc)
+            ? issue.loc.filter((part) => part !== "body").join(".")
+            : "";
+          return field ? `${field}: ${issue.msg}` : issue.msg;
+        })
+        .join(" ");
+    }
+  } catch {
+    // The fallback is still useful when the response has no JSON body.
+  }
+  return fallback;
+}
+
 export default function Checkin() {
   const [stageIndex, setStageIndex] = useState(0);
   const [category, setCategory] = useState(null);
@@ -59,6 +79,7 @@ export default function Checkin() {
   const [detailedArousal, setDetailedArousal] = useState(initialDetailedArousal);
   const [checkinId, setCheckinId] = useState(null);
   const [checkinSubmitStatus, setCheckinSubmitStatus] = useState("idle"); // idle | loading | error
+  const [checkinSubmitError, setCheckinSubmitError] = useState("");
   const [prediction, setPrediction] = useState(null);
   const [predictionStatus, setPredictionStatus] = useState("idle"); // idle | loading | error
   const [predictionError, setPredictionError] = useState("");
@@ -104,14 +125,9 @@ export default function Checkin() {
       });
 
       if (!response.ok) {
-        let message = "Couldnâ€™t calculate the risk right now.";
-        try {
-          const body = await response.json();
-          if (typeof body.detail === "string") message = body.detail;
-        } catch {
-          // Keep the fallback when the server does not return JSON.
-        }
-        setPredictionError(message);
+        setPredictionError(
+          await apiErrorMessage(response, "The server could not calculate the risk right now."),
+        );
         setPredictionStatus("error");
         return;
       }
@@ -119,7 +135,7 @@ export default function Checkin() {
       setPrediction(await response.json());
       setPredictionStatus("idle");
     } catch {
-      setPredictionError("Couldnâ€™t reach the prediction service.");
+      setPredictionError("Could not reach the prediction service.");
       setPredictionStatus("error");
     }
   }
@@ -141,6 +157,7 @@ export default function Checkin() {
     }
     isSubmittingRef.current = true;
     setCheckinSubmitStatus("loading");
+    setCheckinSubmitError("");
 
     try {
       const response = await apiFetch("/api/v1/checkins", {
@@ -156,6 +173,9 @@ export default function Checkin() {
       });
 
       if (!response.ok) {
+        setCheckinSubmitError(
+          await apiErrorMessage(response, "The server rejected this check-in."),
+        );
         setCheckinSubmitStatus("error");
         return;
       }
@@ -166,6 +186,7 @@ export default function Checkin() {
       setStageIndex(1); // -> prediction
       await loadPrediction(checkin.id);
     } catch {
+      setCheckinSubmitError("Could not reach the server. Nothing you entered was lost.");
       setCheckinSubmitStatus("error");
     } finally {
       isSubmittingRef.current = false;
@@ -344,7 +365,7 @@ export default function Checkin() {
 
             {checkinSubmitStatus === "error" && (
               <p className="questionnaire__form-error" role="alert">
-                Couldn&rsquo;t reach the server. Nothing you entered was lost.{" "}
+                {checkinSubmitError}{" "}
                 <button type="button" className="questionnaire__retry" onClick={submitCheckin}>
                   Try again
                 </button>
@@ -366,7 +387,7 @@ export default function Checkin() {
             {predictionStatus === "loading" && (
               <div className="prediction" aria-live="polite">
                 <p className="prediction__label">Current overspending risk</p>
-                <p className="prediction__context">Calculating from your check-in and budgetâ€¦</p>
+                <p className="prediction__context">Calculating from your check-in and budget...</p>
               </div>
             )}
 
