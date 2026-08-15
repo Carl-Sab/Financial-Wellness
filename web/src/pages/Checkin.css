@@ -51,6 +51,93 @@
   margin-bottom: var(--space-7);
 }
 
+/* --- Arduino Web Serial connection --- */
+
+.arduino-alert {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  background: var(--color-white);
+  border: 1.5px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+}
+
+.arduino-alert__title {
+  margin-bottom: 0.2rem;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.arduino-alert__description,
+.arduino-alert__message {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+.arduino-alert__button {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-white);
+  background: var(--color-ink);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.arduino-alert__button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.arduino-alert__button:focus-visible {
+  outline: 3px solid var(--color-lime);
+  outline-offset: 2px;
+}
+
+.arduino-alert__status {
+  width: fit-content;
+  padding: 0.2rem 0.55rem;
+  color: var(--color-text-muted);
+  background: var(--color-mist);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.arduino-alert__status--connected {
+  color: var(--color-ink);
+  background: var(--color-lime);
+}
+
+.arduino-alert__message {
+  align-self: center;
+  text-align: right;
+}
+
+.arduino-alert__message--error {
+  color: var(--color-clay);
+}
+
+@media (max-width: 480px) {
+  .arduino-alert {
+    grid-template-columns: 1fr;
+  }
+
+  .arduino-alert__button {
+    width: 100%;
+  }
+
+  .arduino-alert__message {
+    text-align: left;
+  }
+}
+
 .checkin__question {
   font-size: var(--text-base);
   font-weight: 600;

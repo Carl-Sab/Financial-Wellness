@@ -1,6 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import ArduinoConnection from "../components/ArduinoConnection";
 import Button from "../components/Button";
+import { useArduino } from "../hooks/useArduino";
 import { apiFetch } from "../lib/api";
 import { currencySymbol, formatMoney } from "../lib/currency";
 import ArousalSliderField from "./ArousalSliderField";
@@ -69,6 +71,7 @@ async function apiErrorMessage(response, fallback) {
 }
 
 export default function Checkin() {
+  const { connectionId, sendProbability, status: arduinoStatus } = useArduino();
   const [stageIndex, setStageIndex] = useState(0);
   const [category, setCategory] = useState(null);
   const [valenceIndex, setValenceIndex] = useState(null);
@@ -83,6 +86,7 @@ export default function Checkin() {
   const [prediction, setPrediction] = useState(null);
   const [predictionStatus, setPredictionStatus] = useState("idle"); // idle | loading | error
   const [predictionError, setPredictionError] = useState("");
+  const [arduinoDeliveryStatus, setArduinoDeliveryStatus] = useState("idle");
   const [amount, setAmount] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
   // Independent of the account's default currency (users.currency) — same
@@ -100,6 +104,31 @@ export default function Checkin() {
   const canSubmitCheckin = category != null && valenceIndex != null;
   const amountNumber = Number(amount);
   const amountValid = amount.trim() !== "" && Number.isFinite(amountNumber) && amountNumber > 0;
+
+  useEffect(() => {
+    if (prediction == null) {
+      setArduinoDeliveryStatus("idle");
+      return undefined;
+    }
+    if (arduinoStatus !== "connected") {
+      setArduinoDeliveryStatus("idle");
+      return undefined;
+    }
+
+    let cancelled = false;
+    setArduinoDeliveryStatus("sending");
+    sendProbability(prediction.overspending_probability)
+      .then(() => {
+        if (!cancelled) setArduinoDeliveryStatus("sent");
+      })
+      .catch(() => {
+        if (!cancelled) setArduinoDeliveryStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [arduinoStatus, connectionId, prediction, sendProbability]);
 
   function handleModeChange(nextMode) {
     setMode(nextMode);
@@ -284,6 +313,11 @@ export default function Checkin() {
 
       <div className="checkin__content">
         <h1 className="checkin__title">Check-in</h1>
+
+        <ArduinoConnection
+          deliveryStatus={arduinoDeliveryStatus}
+          probability={prediction?.overspending_probability ?? null}
+        />
 
         {stage === "form" && (
           <form onSubmit={handleCheckinSubmit} noValidate>
