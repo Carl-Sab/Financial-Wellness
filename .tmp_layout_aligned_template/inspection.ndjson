@@ -1,0 +1,65 @@
+{"kind":"slide","id":"sl/87z3t8","slide":1,"title":"Seven ways to frame one idea","textShapes":24}
+{"kind":"shape","id":"sh/0nudgni1","slide":1,"name":"reference-mint-corner","bbox":[0,0,360,352]}
+{"kind":"shape","id":"sh/zmlwnihg","slide":1,"name":"reference-mint-hairline","bbox":[16,134,270,270]}
+{"kind":"shape","id":"sh/ylcved0b","slide":1,"name":"reference-purple-corner","bbox":[902,336,378,384]}
+{"kind":"shape","id":"sh/9snetszy","slide":1,"name":"reference-purple-hairline","bbox":[1002,300,262,262]}
+{"kind":"textbox","id":"sh/8rexknid","slide":1,"name":"slide-title","text":"Seven ways to frame one idea","textPreview":"Seven ways to frame one idea","textChars":28,"textLines":1,"bbox":[382,42,710,52]}
+{"kind":"textbox","id":"sh/nqlwr2hs","slide":1,"name":"slide-kicker","text":"RADIAL MAP  •  01","textPreview":"RADIAL MAP  •  01","textChars":17,"textLines":1,"bbox":[1060,56,162,26]}
+{"kind":"shape","id":"sh/mpcvix07","slide":1,"name":"title-rule","bbox":[382,103,170,4]}
+{"kind":"shape","id":"sh/xgnexczu","slide":1,"name":"radial-wash","bbox":[486,183,308,308]}
+{"kind":"shape","id":"sh/wvexo7i9","slide":1,"name":"outer-orbit","bbox":[512,209,256,256]}
+{"kind":"shape","id":"sh/a9gj2doz","slide":1,"name":"center-routing-anchor","bbox":[545,242,190,190]}
+{"kind":"shape","id":"sh/bap0bi5k","slide":1,"name":"direction-01-anchor","bbox":[478,187,8,8]}
+{"kind":"shape","id":"sh/cbi14365","slide":1,"name":"direction-02-anchor","bbox":[362,325,8,8]}
+{"kind":"shape","id":"sh/xcrid8nq","slide":1,"name":"direction-03-anchor","bbox":[416,463,8,8]}
+{"kind":"shape","id":"sh/yd0j6dob","slide":1,"name":"direction-04-anchor","bbox":[796,187,8,8]}
+{"kind":"shape","id":"sh/ze90fi5w","slide":1,"name":"direction-05-anchor","bbox":[868,325,8,8]}
+{"kind":"shape","id":"sh/kfi18n61","slide":1,"name":"direction-06-anchor","bbox":[818,463,8,8]}
+{"kind":"shape","id":"sh/lgrihsnm","slide":1,"name":"priority-routing-anchor","bbox":[636,528,8,8]}
+{"kind":"shape","id":"sh/ehwzutor","slide":1,"bbox":[486,191,59,146]}
+{"kind":"shape","id":"sh/fi503epc","slide":1,"bbox":[370,329,175,8]}
+{"kind":"shape","id":"sh/ja1ofqh8","slide":1,"bbox":[424,337,121,130]}
+{"kind":"shape","id":"sh/i9s7ml0n","slide":1,"bbox":[735,191,61,146]}
+{"kind":"shape","id":"sh/5cj6h0zy","slide":1,"bbox":[735,329,133,8]}
+{"kind":"shape","id":"sh/4bapovid","slide":1,"bbox":[735,337,83,130]}
+{"kind":"shape","id":"sh/vmhobq1w","slide":1,"bbox":[640,432,0,96]}
+{"kind":"shape","id":"sh/ul87il0b","slide":1,"name":"direction-01-endpoint","bbox":[475,184,14,14]}
+{"kind":"shape","id":"sh/h8j6dgz2","slide":1,"name":"direction-02-endpoint","bbox":[359,322,14,14]}
+{"kind":"shape","id":"sh/wnapkbih","slide":1,"name":"direction-03-endpoint","bbox":[413,460,14,14]}
+{"kind":"shape","id":"sh/fil8nah0","slide":1,"name":"direction-04-endpoint","bbox":[793,184,14,14]}
+{"kind":"shape","id":"sh/ehc7u50v","slide":1,"name":"direction-05-endpoint","bbox":[865,322,14,14]}
+{"kind":"shape","id":"sh/cnmlo7yx","slide":1,"name":"direction-06-endpoint","bbox":[815,460,14,14]}
+{"kind":"shape","id":"sh/dofmhczi","slide":1,"name":"priority-endpoint","bbox":[631,523,18,18]}
+{"kind":"textbox","id":"sh/ql43mxg7","slide":1,"name":"direction-01-number-marker","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[428,156,38,38]}
+{"kind":"textbox","id":"sh/bmd4f2hs","slide":1,"name":"direction-01-heading","text":"DIRECTION 01","textPreview":"DIRECTION 01","textChars":12,"textLines":1,"bbox":[222,149,194,30]}
+{"kind":"textbox","id":"sh/0r6ls7y9","slide":1,"name":"direction-01-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[222,181,194,23]}
+{"kind":"shape","id":"sh/lsfmlcfu","slide":1,"name":"direction-01-accent","bbox":[366,210,50,3]}
+{"kind":"textbox","id":"sh/ypo3qhg3","slide":1,"name":"direction-02-number-marker","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[308,294,38,38]}
+{"kind":"textbox","id":"sh/zqx4jmxo","slide":1,"name":"direction-02-heading","text":"DIRECTION 02","textPreview":"DIRECTION 02","textChars":12,"textLines":1,"bbox":[48,287,246,30]}
+{"kind":"textbox","id":"sh/8fq5wry5","slide":1,"name":"direction-02-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[48,319,246,23]}
+{"kind":"shape","id":"sh/9gzmpwfq","slide":1,"name":"direction-02-accent","bbox":[244,348,50,3]}
+{"kind":"textbox","id":"sh/to7m5c36","slide":1,"name":"direction-03-number-marker","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[362,432,38,38]}
+{"kind":"textbox","id":"sh/sny5c72l","slide":1,"name":"direction-03-heading","text":"DIRECTION 03","textPreview":"DIRECTION 03","textChars":12,"textLines":1,"bbox":[98,425,252,30]}
+{"kind":"textbox","id":"sh/7mp43ml0","slide":1,"name":"direction-03-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[98,457,252,23]}
+{"kind":"shape","id":"sh/61g3ahkf","slide":1,"name":"direction-03-accent","bbox":[300,486,50,3]}
+{"kind":"textbox","id":"sh/507m1c3u","slide":1,"name":"direction-04-number-marker","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[820,156,38,38]}
+{"kind":"textbox","id":"sh/kzyl8729","slide":1,"name":"direction-04-heading","text":"DIRECTION 04","textPreview":"DIRECTION 04","textChars":12,"textLines":1,"bbox":[872,149,220,30]}
+{"kind":"textbox","id":"sh/jyp4z2l4","slide":1,"name":"direction-04-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[872,181,220,23]}
+{"kind":"shape","id":"sh/yxw36xkj","slide":1,"name":"direction-04-accent","bbox":[872,210,50,3]}
+{"kind":"textbox","id":"sh/pwrmdwje","slide":1,"name":"direction-05-number-marker","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[894,294,38,38]}
+{"kind":"textbox","id":"sh/4vi5kr2t","slide":1,"name":"direction-05-heading","text":"DIRECTION 05","textPreview":"DIRECTION 05","textChars":12,"textLines":1,"bbox":[946,287,240,30]}
+{"kind":"textbox","id":"sh/2psbi9wz","slide":1,"name":"direction-05-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[946,319,240,23]}
+{"kind":"shape","id":"sh/nq1srexk","slide":1,"name":"direction-05-accent","bbox":[946,348,50,3]}
+{"kind":"textbox","id":"sh/oratkze5","slide":1,"name":"direction-06-number-marker","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[844,432,38,38]}
+{"kind":"textbox","id":"sh/psjat4fa","slide":1,"name":"direction-06-heading","text":"DIRECTION 06","textPreview":"DIRECTION 06","textChars":12,"textLines":1,"bbox":[896,425,220,30]}
+{"kind":"textbox","id":"sh/elsrepwn","slide":1,"name":"direction-06-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[896,457,220,23]}
+{"kind":"shape","id":"sh/fm1snux8","slide":1,"name":"direction-06-accent","bbox":[896,486,50,3]}
+{"kind":"shape","id":"sh/0natgzet","slide":1,"name":"center-halo","bbox":[532,229,216,216]}
+{"kind":"textbox","id":"sh/1ojap4fe","slide":1,"name":"center-word-node","text":"CORE IDEA\nNEXUS","textPreview":"CORE IDEA | NEXUS","textChars":15,"textLines":2,"bbox":[545,242,190,190]}
+{"kind":"shape","id":"sh/yhcbqtw7","slide":1,"name":"priority-shadow-field","bbox":[427,564,426,108]}
+{"kind":"shape","id":"sh/zilszyds","slide":1,"name":"priority-card","bbox":[439,576,402,86]}
+{"kind":"textbox","id":"sh/v2x8bqd4","slide":1,"name":"direction-07-number-marker","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[458,590,58,58]}
+{"kind":"textbox","id":"sh/u147ilcj","slide":1,"name":"priority-eyebrow","text":"PRIORITY DIRECTION","textPreview":"PRIORITY DIRECTION","textChars":18,"textLines":1,"bbox":[539,589,270,19]}
+{"kind":"textbox","id":"sh/h4fqdgva","slide":1,"name":"priority-heading","text":"MAKE IT UNMISSABLE","textPreview":"MAKE IT UNMISSABLE","textChars":18,"textLines":1,"bbox":[539,608,270,36]}
+{"kind":"shape","id":"sh/g36pkvup","slide":1,"name":"priority-edge","bbox":[823,592,4,54]}
+{"kind":"notes","id":"nt/87z3t8","slide":1,"text":"Template usage: Replace NEXUS, DIRECTION 01–06, and the priority direction. Preserve the emphasized seventh path at bottom center.\nColor system: mint #66FF99 and purple #7030A0.\n[Sources]\n- User-provided layout reference: C:\\Users\\User\\AppData\\Local\\Temp\\codex-clipboard-91ad45b4-9061-4202-b102-10799e39ecc1.png (visual layout adaptation only; not embedded).\n- No external claims or third-party assets."}

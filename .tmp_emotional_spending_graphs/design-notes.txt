@@ -1,0 +1,3 @@
+Communication job: help an audience quickly understand both the prevalence and consequences of emotional spending while keeping population bases explicit.
+Visual route: explicit custom direction based on the user's existing white, mint #66FF99, and purple #7030A0 slide theme.
+Output: two editable 16:9 PowerPoint graph slides, one per survey.

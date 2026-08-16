@@ -1,0 +1,3 @@
+Communication job: provide a reusable seven-direction concept map that inherits the supplied diagonal corner layout while keeping the bottom-center seventh direction dominant.
+Visual route: explicit custom visual direction from user-provided raster reference.
+Output: one editable 16:9 PowerPoint slide; original deck preserved.

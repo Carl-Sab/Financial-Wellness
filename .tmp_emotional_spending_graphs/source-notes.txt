@@ -1,0 +1,8 @@
+LendingTree / QuestionPro survey (2025): https://www.lendingtree.com/credit-cards/study/emotional-shopping/
+Credit Karma / Qualtrics survey (2023): https://www.creditkarma.com/about/commentary/emotional-spending-is-out-of-control-for-more-than-one-third-of-gen-z-study-finds
+
+Data used:
+- 2025: all adults — emotions influence purchases 63%; shopped to improve mood 47%. Emotional shoppers — overspent 74%; regretted it 69%; financial well-being hurt 44%.
+- 2023: emotional spending out of control 24%; buyer's remorse 45%; want to reduce spending 59%.
+
+No external visual assets were used.

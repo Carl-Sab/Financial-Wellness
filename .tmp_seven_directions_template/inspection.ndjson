@@ -1,0 +1,63 @@
+{"kind":"slide","id":"sl/a8opof","slide":1,"title":"Seven ways to frame one idea","textShapes":24}
+{"kind":"shape","id":"sh/fmt8nihs","slide":1,"name":"title-accent","bbox":[62,52,6,48]}
+{"kind":"textbox","id":"sh/0nmpwnyd","slide":1,"name":"slide-title","text":"Seven ways to frame one idea","textPreview":"Seven ways to frame one idea","textChars":28,"textLines":1,"bbox":[88,49,700,52]}
+{"kind":"textbox","id":"sh/1ovqpszy","slide":1,"name":"slide-kicker","text":"RADIAL PRIORITY MAP  •  01","textPreview":"RADIAL PRIORITY MAP  •  01","textChars":26,"textLines":1,"bbox":[944,62,274,28]}
+{"kind":"shape","id":"sh/2947yxgj","slide":1,"name":"header-rule","bbox":[62,112,1156,1]}
+{"kind":"shape","id":"sh/nad8rih4","slide":1,"name":"radial-glow","bbox":[418,151,444,444]}
+{"kind":"shape","id":"sh/obmp0nyp","slide":1,"name":"outer-orbit","bbox":[446,178,388,388]}
+{"kind":"shape","id":"sh/pcvqtszu","slide":1,"name":"inner-orbit","bbox":[494,226,292,292]}
+{"kind":"shape","id":"sh/id07mtgf","slide":1,"name":"center-routing-anchor","bbox":[531,257,218,218]}
+{"kind":"shape","id":"sh/3e9ofyhk","slide":1,"name":"direction-01-anchor","bbox":[346,191,8,8]}
+{"kind":"shape","id":"sh/v690juh4","slide":1,"name":"direction-02-anchor","bbox":[322,331,8,8]}
+{"kind":"shape","id":"sh/a50zap0j","slide":1,"name":"direction-03-anchor","bbox":[350,471,8,8]}
+{"kind":"shape","id":"sh/x8ril4zu","slide":1,"name":"direction-04-anchor","bbox":[928,191,8,8]}
+{"kind":"shape","id":"sh/w7ihczi9","slide":1,"name":"direction-05-anchor","bbox":[952,331,8,8]}
+{"kind":"shape","id":"sh/n290fahs","slide":1,"name":"direction-06-anchor","bbox":[924,471,8,8]}
+{"kind":"shape","id":"sh/m1gz6507","slide":1,"name":"priority-routing-anchor","bbox":[636,541,8,8]}
+{"kind":"shape","id":"sh/94rihkzy","slide":1,"bbox":[354,195,177,171]}
+{"kind":"shape","id":"sh/83ih8fid","slide":1,"bbox":[330,335,201,31]}
+{"kind":"shape","id":"sh/zepgbahw","slide":1,"bbox":[358,366,173,109]}
+{"kind":"shape","id":"sh/ydgz250b","slide":1,"bbox":[749,195,179,171]}
+{"kind":"shape","id":"sh/29wje5k3","slide":1,"bbox":[749,335,203,31]}
+{"kind":"shape","id":"sh/3a50nalo","slide":1,"bbox":[749,366,175,109]}
+{"kind":"shape","id":"sh/oby1gf29","slide":1,"bbox":[640,475,0,66]}
+{"kind":"shape","id":"sh/pc7ip03u","slide":1,"name":"direction-01-endpoint","bbox":[343,188,14,14]}
+{"kind":"shape","id":"sh/qdgji5kz","slide":1,"name":"direction-02-endpoint","bbox":[319,328,14,14]}
+{"kind":"shape","id":"sh/bep0ralk","slide":1,"name":"direction-03-endpoint","bbox":[347,468,14,14]}
+{"kind":"shape","id":"sh/czy1kf25","slide":1,"name":"direction-04-endpoint","bbox":[925,188,14,14]}
+{"kind":"shape","id":"sh/d07itk3q","slide":1,"name":"direction-05-endpoint","bbox":[949,328,14,14]}
+{"kind":"shape","id":"sh/y1gjmpkb","slide":1,"name":"direction-06-endpoint","bbox":[921,468,14,14]}
+{"kind":"shape","id":"sh/z2p0vulw","slide":1,"name":"priority-endpoint","bbox":[631,536,18,18]}
+{"kind":"textbox","id":"sh/9wbmlony","slide":1,"name":"direction-01-number-marker","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[296,162,38,38]}
+{"kind":"textbox","id":"sh/8v2lsjmd","slide":1,"name":"direction-01-heading","text":"DIRECTION 01","textPreview":"DIRECTION 01","textChars":12,"textLines":1,"bbox":[62,153,220,32]}
+{"kind":"textbox","id":"sh/nu94je5s","slide":1,"name":"direction-01-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[62,187,220,24]}
+{"kind":"shape","id":"sh/mt03q94n","slide":1,"name":"direction-01-accent-rule","bbox":[230,217,52,2]}
+{"kind":"textbox","id":"sh/x0bmpona","slide":1,"name":"direction-02-number-marker","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[296,302,38,38]}
+{"kind":"textbox","id":"sh/wz2lwjmp","slide":1,"name":"direction-02-heading","text":"DIRECTION 02","textPreview":"DIRECTION 02","textChars":12,"textLines":1,"bbox":[38,293,244,32]}
+{"kind":"textbox","id":"sh/vyt4ny54","slide":1,"name":"direction-02-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[38,327,244,24]}
+{"kind":"shape","id":"sh/axk3ut4j","slide":1,"name":"direction-02-accent-rule","bbox":[230,357,52,2]}
+{"kind":"textbox","id":"sh/54vmt8n6","slide":1,"name":"direction-03-number-marker","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[296,442,38,38]}
+{"kind":"textbox","id":"sh/k3ml03ml","slide":1,"name":"direction-03-heading","text":"DIRECTION 03","textPreview":"DIRECTION 03","textChars":12,"textLines":1,"bbox":[66,433,216,32]}
+{"kind":"textbox","id":"sh/gj6ps76t","slide":1,"name":"direction-03-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[66,467,216,24]}
+{"kind":"shape","id":"sh/1kf6lc7e","slide":1,"name":"direction-03-accent-rule","bbox":[230,497,52,2]}
+{"kind":"textbox","id":"sh/uxo7qxon","slide":1,"name":"direction-04-number-marker","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[944,162,38,38]}
+{"kind":"textbox","id":"sh/fyxoj2p8","slide":1,"name":"direction-04-heading","text":"DIRECTION 04","textPreview":"DIRECTION 04","textChars":12,"textLines":1,"bbox":[998,153,220,32]}
+{"kind":"textbox","id":"sh/sv65on6x","slide":1,"name":"direction-04-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[998,187,220,24]}
+{"kind":"shape","id":"sh/twf6hs7i","slide":1,"name":"direction-04-accent-rule","bbox":[998,217,52,2]}
+{"kind":"textbox","id":"sh/6t4nmxor","slide":1,"name":"direction-05-number-marker","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[944,302,38,38]}
+{"kind":"textbox","id":"sh/7uxofipc","slide":1,"name":"direction-05-heading","text":"DIRECTION 05","textPreview":"DIRECTION 05","textChars":12,"textLines":1,"bbox":[998,293,244,32]}
+{"kind":"textbox","id":"sh/crqp0r61","slide":1,"name":"direction-05-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[998,327,244,24]}
+{"kind":"shape","id":"sh/dsz6twnm","slide":1,"name":"direction-05-accent-rule","bbox":[998,357,52,2]}
+{"kind":"textbox","id":"sh/nmlsjq9o","slide":1,"name":"direction-06-number-marker","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[944,442,38,38]}
+{"kind":"textbox","id":"sh/mlcrql83","slide":1,"name":"direction-06-heading","text":"DIRECTION 06","textPreview":"DIRECTION 06","textChars":12,"textLines":1,"bbox":[998,433,216,32]}
+{"kind":"textbox","id":"sh/983al0ru","slide":1,"name":"direction-06-descriptor","text":"Short supporting lens","textPreview":"Short supporting lens","textChars":21,"textLines":1,"bbox":[998,467,216,24]}
+{"kind":"shape","id":"sh/8nu9svq9","slide":1,"name":"direction-06-accent-rule","bbox":[998,497,52,2]}
+{"kind":"shape","id":"sh/valsnqp0","slide":1,"name":"center-halo","bbox":[518,244,244,244]}
+{"kind":"textbox","id":"sh/a9cru58f","slide":1,"name":"center-word-node","text":"CORE IDEA\nNEXUS","textPreview":"CORE IDEA | NEXUS","textChars":15,"textLines":2,"bbox":[535,261,210,210]}
+{"kind":"shape","id":"sh/xcnap07q","slide":1,"name":"priority-glow","bbox":[411,561,458,118]}
+{"kind":"shape","id":"sh/wbu9wvq5","slide":1,"name":"priority-card","bbox":[424,574,432,92]}
+{"kind":"textbox","id":"sh/be18b69g","slide":1,"name":"direction-07-number-marker","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[445,590,60,60]}
+{"kind":"textbox","id":"sh/qdsri18v","slide":1,"name":"priority-eyebrow","text":"PRIORITY DIRECTION","textPreview":"PRIORITY DIRECTION","textChars":18,"textLines":1,"bbox":[530,586,290,20]}
+{"kind":"textbox","id":"sh/el036dwv","slide":1,"name":"priority-heading","text":"MAKE IT UNMISSABLE","textPreview":"MAKE IT UNMISSABLE","textChars":18,"textLines":1,"bbox":[530,607,292,38]}
+{"kind":"shape","id":"sh/fm94fyxg","slide":1,"name":"priority-edge","bbox":[844,592,4,56]}
+{"kind":"notes","id":"nt/a8opof","slide":1,"text":"Template usage: Replace NEXUS, DIRECTION 01–06, and the priority direction. Keep the seventh path at bottom center to preserve the intended emphasis.\nColor system: primary mint #66FF99; primary purple #7030A0; neutral tones support contrast.\n[Sources]\n- No external sources or assets; original editable layout."}

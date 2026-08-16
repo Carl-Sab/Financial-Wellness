@@ -1,0 +1,33 @@
+{"kind":"deck","id":"pr/n02lh4","name":"Deck"}
+{"kind":"layout","layoutId":"c417d6ea-e4d6-45d5-9b92-ff6047256064","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"ee94b7c7-8ce7-4055-81a8-f177cf01280e","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/i4nepl","slide":1,"title":"SURVEY","textShapes":6}
+{"kind":"shape","id":"sh/uhwzmp4z","slide":1,"name":"mint-corner-1","bbox":[0,0,300,272]}
+{"kind":"shape","id":"sh/hknix43q","slide":1,"name":"mint-hairline-1","bbox":[20,112,248,248]}
+{"kind":"shape","id":"sh/gjehozm5","slide":1,"name":"purple-corner-1","bbox":[1040,486,240,234]}
+{"kind":"shape","id":"sh/3m50zelw","slide":1,"name":"purple-hairline-1","bbox":[1080,395,184,184]}
+{"kind":"textbox","id":"sh/2lwzq94b","slide":1,"name":"corner-label-1","text":"SURVEY","textPreview":"SURVEY","textChars":6,"textLines":1,"bbox":[64,70,122,23]}
+{"kind":"textbox","id":"sh/poni143m","slide":1,"name":"corner-number-1","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[62,92,122,52]}
+{"kind":"textbox","id":"sh/4nehszmh","slide":1,"name":"slide-1-title","text":"Emotional shopping often ends in overspending","textPreview":"Emotional shopping often ends in overspending","textChars":45,"textLines":1,"bbox":[340,40,700,56]}
+{"kind":"textbox","id":"sh/jqlgnalc","slide":1,"name":"slide-1-subtitle","text":"2025 U.S. survey  |  n=2,000 adults  |  LendingTree / QuestionPro","textPreview":"2025 U.S. survey  |  n=2,000 adults  |  LendingTree / QuestionPro","textChars":65,"textLines":1,"bbox":[340,96,720,26]}
+{"kind":"shape","id":"sh/ipsze547","slide":1,"name":"slide-1-title-rule","bbox":[340,133,178,4]}
+{"kind":"shape","id":"sh/tcnm94zm","slide":1,"name":"slide-1-insight-rule","bbox":[340,585,6,50]}
+{"kind":"textbox","id":"sh/69c3e90b","slide":1,"name":"slide-1-insight","text":"Among emotional shoppers, overspending is the most common reported consequence.","textPreview":"Among emotional shoppers, overspending is the most common reported consequence.","textChars":79,"textLines":1,"bbox":[362,582,660,56]}
+{"kind":"textbox","id":"sh/7a5k7ehw","slide":1,"name":"slide-1-source-footer","text":"Base note: 63% and 47% are all adults; 74%, 69%, and 44% are emotional shoppers.","textPreview":"Base note: 63% and 47% are all adults; 74%, 69%, and 44% are emotional shoppers.","textChars":80,"textLines":1,"bbox":[72,675,900,22]}
+{"kind":"chart","id":"ch/872dk3m9","slide":1,"name":"","chartType":"bar","bbox":[150,160,930,400]}
+{"kind":"notes","id":"nt/i4nepl","slide":1,"text":"The first two bars use the full U.S. adult sample. The three consequence bars use the emotional-shopper subgroup.\nMethodology: LendingTree commissioned QuestionPro to survey 2,000 U.S. consumers ages 18 to 79 online from June 2–3, 2025; nonprobability sample with quotas and quality-control review.\n[Sources]\n- https://www.lendingtree.com/credit-cards/study/emotional-shopping/"}
+{"kind":"slide","id":"sl/4w8nls","slide":2,"title":"SURVEY","textShapes":6}
+{"kind":"shape","id":"sh/w32dc3yx","slide":2,"name":"mint-corner-2","bbox":[0,0,300,272]}
+{"kind":"shape","id":"sh/bitc3yxc","slide":2,"name":"mint-hairline-2","bbox":[20,112,248,248]}
+{"kind":"shape","id":"sh/ahkbatgr","slide":2,"name":"purple-corner-2","bbox":[1040,486,240,234]}
+{"kind":"shape","id":"sh/l8vu98fe","slide":2,"name":"purple-hairline-2","bbox":[1080,395,184,184]}
+{"kind":"textbox","id":"sh/k7mdg3yt","slide":2,"name":"corner-label-2","text":"SURVEY","textPreview":"SURVEY","textChars":6,"textLines":1,"bbox":[64,70,122,23]}
+{"kind":"textbox","id":"sh/j6dc7yxo","slide":2,"name":"corner-number-2","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[62,92,122,52]}
+{"kind":"textbox","id":"sh/y54vedg3","slide":2,"name":"slide-2-title","text":"Regret is common—and most want to spend less","textPreview":"Regret is common—and most want to spend less","textChars":44,"textLines":1,"bbox":[340,40,700,56]}
+{"kind":"textbox","id":"sh/tcfudsfq","slide":2,"name":"slide-2-subtitle","text":"2023 U.S. survey  |  n=1,008 adults  |  Credit Karma / Qualtrics","textPreview":"2023 U.S. survey  |  n=1,008 adults  |  Credit Karma / Qualtrics","textChars":64,"textLines":1,"bbox":[340,96,720,26]}
+{"kind":"shape","id":"sh/8bmdkny5","slide":2,"name":"slide-2-title-rule","bbox":[340,133,178,4]}
+{"kind":"shape","id":"sh/jq58fqdk","slide":2,"name":"slide-2-insight-rule","bbox":[340,550,6,58]}
+{"kind":"textbox","id":"sh/kre9ovu5","slide":2,"name":"slide-2-insight","text":"The desire to cut back is more than twice the share calling their spending “out of control.”","textPreview":"The desire to cut back is more than twice the share calling their spending “out of control.”","textChars":92,"textLines":1,"bbox":[362,546,675,66]}
+{"kind":"textbox","id":"sh/lsnqh0vq","slide":2,"name":"slide-2-source-footer","text":"All three figures are reported for the U.S. adult survey sample.","textPreview":"All three figures are reported for the U.S. adult survey sample.","textChars":64,"textLines":1,"bbox":[72,675,780,22]}
+{"kind":"chart","id":"ch/m90ry10n","slide":2,"name":"","chartType":"bar","bbox":[150,190,930,330]}
+{"kind":"notes","id":"nt/4w8nls","slide":2,"text":"Methodology: Qualtrics surveyed 1,008 U.S. adults ages 18 and older online on behalf of Credit Karma from February 22–27, 2023.\nThe ‘more than twice’ statement is an arithmetic comparison of 59% versus 24%.\n[Sources]\n- https://www.creditkarma.com/about/commentary/emotional-spending-is-out-of-control-for-more-than-one-third-of-gen-z-study-finds"}

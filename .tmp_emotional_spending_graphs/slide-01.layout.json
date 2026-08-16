@@ -1,0 +1,620 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/i4nepl",
+    "id": "i4nepl",
+    "slide": 1,
+    "layoutId": "ee94b7c7-8ce7-4055-81a8-f177cf01280e",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "c417d6ea-e4d6-45d5-9b92-ff6047256064",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "ee94b7c7-8ce7-4055-81a8-f177cf01280e",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "c417d6ea-e4d6-45d5-9b92-ff6047256064",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "c417d6ea-e4d6-45d5-9b92-ff6047256064",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/uhwzmp4z",
+      "id": "1",
+      "name": "mint-corner-1",
+      "bbox": [
+        0,
+        0,
+        300,
+        272
+      ],
+      "geometry": "custom",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hknix43q",
+      "id": "2",
+      "name": "mint-hairline-1",
+      "bbox": [
+        20,
+        112,
+        248,
+        248
+      ],
+      "geometry": "custom",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gjehozm5",
+      "id": "3",
+      "name": "purple-corner-1",
+      "bbox": [
+        1040,
+        486,
+        240,
+        234
+      ],
+      "geometry": "custom",
+      "fillColor": "#7030A0",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3m50zelw",
+      "id": "4",
+      "name": "purple-hairline-1",
+      "bbox": [
+        1080,
+        395,
+        184,
+        184
+      ],
+      "geometry": "custom",
+      "fillColor": "#7030A0",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2lwzq94b",
+      "id": "5",
+      "name": "corner-label-1",
+      "bbox": [
+        64,
+        70,
+        122,
+        23
+      ],
+      "geometry": "rect",
+      "text": "SURVEY",
+      "textPreview": "SURVEY",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#7030A0",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "SURVEY"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "SURVEY",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#7030A0",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "SURVEY",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#7030A0",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/poni143m",
+      "id": "6",
+      "name": "corner-number-1",
+      "bbox": [
+        62,
+        92,
+        122,
+        52
+      ],
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 45.14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 46,
+        "typeface": "Aptos Display",
+        "color": "#7030A0",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.98,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 46,
+            "typeface": "Aptos Display",
+            "color": "#7030A0",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 46,
+              "typeface": "Aptos Display",
+              "color": "#7030A0",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4nehszmh",
+      "id": "7",
+      "name": "slide-1-title",
+      "bbox": [
+        340,
+        40,
+        700,
+        56
+      ],
+      "geometry": "rect",
+      "text": "Emotional shopping often ends in overspending",
+      "textPreview": "Emotional shopping often ends in overspending",
+      "resolvedFontSize": 35.08,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 36,
+        "typeface": "Aptos Display",
+        "color": "#2E173D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.97,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Emotional shopping often ends in overspending"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Emotional shopping often ends in overspending",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 36,
+            "typeface": "Aptos Display",
+            "color": "#2E173D",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Emotional shopping often ends in overspending",
+              "fontSize": 36,
+              "typeface": "Aptos Display",
+              "color": "#2E173D",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jqlgnalc",
+      "id": "8",
+      "name": "slide-1-subtitle",
+      "bbox": [
+        340,
+        96,
+        720,
+        26
+      ],
+      "geometry": "rect",
+      "text": "2025 U.S. survey  |  n=2,000 adults  |  LendingTree / QuestionPro",
+      "textPreview": "2025 U.S. survey  |  n=2,000 adults  |  LendingTree / QuestionPro",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#746C79",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2025 U.S. survey  |  n=2,000 adults  |  LendingTree / QuestionPro"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2025 U.S. survey  |  n=2,000 adults  |  LendingTree / QuestionPro",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#746C79",
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "2025 U.S. survey  |  n=2,000 adults  |  LendingTree / QuestionPro",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#746C79",
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ipsze547",
+      "id": "9",
+      "name": "slide-1-title-rule",
+      "bbox": [
+        340,
+        133,
+        178,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "chart",
+      "scope": "slide",
+      "aid": "ch/872dk3m9",
+      "id": "10",
+      "bbox": [
+        150,
+        160,
+        930,
+        400
+      ],
+      "chartType": "bar"
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcnm94zm",
+      "id": "11",
+      "name": "slide-1-insight-rule",
+      "bbox": [
+        340,
+        585,
+        6,
+        50
+      ],
+      "geometry": "rect",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/69c3e90b",
+      "id": "12",
+      "name": "slide-1-insight",
+      "bbox": [
+        362,
+        582,
+        660,
+        56
+      ],
+      "geometry": "rect",
+      "text": "Among emotional shoppers, overspending is the most common reported consequence.",
+      "textPreview": "Among emotional shoppers, overspending is the most common reported consequence.",
+      "resolvedFontSize": 17.99,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 20,
+        "typeface": "Aptos Display",
+        "color": "#2E173D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.9,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Among emotional shoppers, overspending is the most common reported consequence."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Among emotional shoppers, overspending is the most common reported consequence.",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 20,
+            "typeface": "Aptos Display",
+            "color": "#2E173D",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Among emotional shoppers, overspending is the most common reported consequence.",
+              "fontSize": 20,
+              "typeface": "Aptos Display",
+              "color": "#2E173D",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7a5k7ehw",
+      "id": "13",
+      "name": "slide-1-source-footer",
+      "bbox": [
+        72,
+        675,
+        900,
+        22
+      ],
+      "geometry": "rect",
+      "text": "Base note: 63% and 47% are all adults; 74%, 69%, and 44% are emotional shoppers.",
+      "textPreview": "Base note: 63% and 47% are all adults; 74%, 69%, and 44% are emotional shoppers.",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#746C79",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Base note: 63% and 47% are all adults; 74%, 69%, and 44% are emotional shoppers."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Base note: 63% and 47% are all adults; 74%, 69%, and 44% are emotional shoppers.",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#746C79",
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Base note: 63% and 47% are all adults; 74%, 69%, and 44% are emotional shoppers.",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#746C79",
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

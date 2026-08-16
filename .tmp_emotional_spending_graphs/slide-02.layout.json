@@ -1,0 +1,620 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/4w8nls",
+    "id": "4w8nls",
+    "slide": 2,
+    "layoutId": "ee94b7c7-8ce7-4055-81a8-f177cf01280e",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "c417d6ea-e4d6-45d5-9b92-ff6047256064",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "ee94b7c7-8ce7-4055-81a8-f177cf01280e",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "c417d6ea-e4d6-45d5-9b92-ff6047256064",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "c417d6ea-e4d6-45d5-9b92-ff6047256064",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/w32dc3yx",
+      "id": "1",
+      "name": "mint-corner-2",
+      "bbox": [
+        0,
+        0,
+        300,
+        272
+      ],
+      "geometry": "custom",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bitc3yxc",
+      "id": "2",
+      "name": "mint-hairline-2",
+      "bbox": [
+        20,
+        112,
+        248,
+        248
+      ],
+      "geometry": "custom",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ahkbatgr",
+      "id": "3",
+      "name": "purple-corner-2",
+      "bbox": [
+        1040,
+        486,
+        240,
+        234
+      ],
+      "geometry": "custom",
+      "fillColor": "#7030A0",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l8vu98fe",
+      "id": "4",
+      "name": "purple-hairline-2",
+      "bbox": [
+        1080,
+        395,
+        184,
+        184
+      ],
+      "geometry": "custom",
+      "fillColor": "#7030A0",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/k7mdg3yt",
+      "id": "5",
+      "name": "corner-label-2",
+      "bbox": [
+        64,
+        70,
+        122,
+        23
+      ],
+      "geometry": "rect",
+      "text": "SURVEY",
+      "textPreview": "SURVEY",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#7030A0",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "SURVEY"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "SURVEY",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#7030A0",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "SURVEY",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#7030A0",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j6dc7yxo",
+      "id": "6",
+      "name": "corner-number-2",
+      "bbox": [
+        62,
+        92,
+        122,
+        52
+      ],
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 45.14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 46,
+        "typeface": "Aptos Display",
+        "color": "#7030A0",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.98,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 46,
+            "typeface": "Aptos Display",
+            "color": "#7030A0",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 46,
+              "typeface": "Aptos Display",
+              "color": "#7030A0",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y54vedg3",
+      "id": "7",
+      "name": "slide-2-title",
+      "bbox": [
+        340,
+        40,
+        700,
+        56
+      ],
+      "geometry": "rect",
+      "text": "Regret is common—and most want to spend less",
+      "textPreview": "Regret is common—and most want to spend less",
+      "resolvedFontSize": 33.93,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 36,
+        "typeface": "Aptos Display",
+        "color": "#2E173D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.94,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Regret is common—and most want to spend less"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Regret is common—and most want to spend less",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 36,
+            "typeface": "Aptos Display",
+            "color": "#2E173D",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Regret is common—and most want to spend less",
+              "fontSize": 36,
+              "typeface": "Aptos Display",
+              "color": "#2E173D",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcfudsfq",
+      "id": "8",
+      "name": "slide-2-subtitle",
+      "bbox": [
+        340,
+        96,
+        720,
+        26
+      ],
+      "geometry": "rect",
+      "text": "2023 U.S. survey  |  n=1,008 adults  |  Credit Karma / Qualtrics",
+      "textPreview": "2023 U.S. survey  |  n=1,008 adults  |  Credit Karma / Qualtrics",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#746C79",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "2023 U.S. survey  |  n=1,008 adults  |  Credit Karma / Qualtrics"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "2023 U.S. survey  |  n=1,008 adults  |  Credit Karma / Qualtrics",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#746C79",
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "2023 U.S. survey  |  n=1,008 adults  |  Credit Karma / Qualtrics",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#746C79",
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8bmdkny5",
+      "id": "9",
+      "name": "slide-2-title-rule",
+      "bbox": [
+        340,
+        133,
+        178,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "chart",
+      "scope": "slide",
+      "aid": "ch/m90ry10n",
+      "id": "10",
+      "bbox": [
+        150,
+        190,
+        930,
+        330
+      ],
+      "chartType": "bar"
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jq58fqdk",
+      "id": "11",
+      "name": "slide-2-insight-rule",
+      "bbox": [
+        340,
+        550,
+        6,
+        58
+      ],
+      "geometry": "rect",
+      "fillColor": "#66FF99",
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kre9ovu5",
+      "id": "12",
+      "name": "slide-2-insight",
+      "bbox": [
+        362,
+        546,
+        675,
+        66
+      ],
+      "geometry": "rect",
+      "text": "The desire to cut back is more than twice the share calling their spending “out of control.”",
+      "textPreview": "The desire to cut back is more than twice the share calling their spending “out of control.”",
+      "resolvedFontSize": 17.97,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 20,
+        "typeface": "Aptos Display",
+        "color": "#2E173D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.9,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The desire to cut back is more than twice the share calling their spending “out of control.”"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The desire to cut back is more than twice the share calling their spending “out of control.”",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 20,
+            "typeface": "Aptos Display",
+            "color": "#2E173D",
+            "bold": true,
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "The desire to cut back is more than twice the share calling their spending “out of control.”",
+              "fontSize": 20,
+              "typeface": "Aptos Display",
+              "color": "#2E173D",
+              "bold": true,
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lsnqh0vq",
+      "id": "13",
+      "name": "slide-2-source-footer",
+      "bbox": [
+        72,
+        675,
+        780,
+        22
+      ],
+      "geometry": "rect",
+      "text": "All three figures are reported for the U.S. adult survey sample.",
+      "textPreview": "All three figures are reported for the U.S. adult survey sample.",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 16,
+        "typeface": "Aptos",
+        "color": "#746C79",
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "wrap": "none",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "All three figures are reported for the U.S. adult survey sample."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "All three figures are reported for the U.S. adult survey sample.",
+          "lineSpacingPercent": 96000,
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos",
+            "color": "#746C79",
+            "alignment": "left",
+            "lineSpacing": 0.96
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "All three figures are reported for the U.S. adult survey sample.",
+              "fontSize": 16,
+              "typeface": "Aptos",
+              "color": "#746C79",
+              "alignment": "left",
+              "lineSpacing": 0.96
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}
