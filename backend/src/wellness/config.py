@@ -41,6 +41,18 @@ class Settings(BaseSettings):
     # Real default is fine here.
     frontend_origin: str = "http://localhost:5173"
 
+    # Optional: SMTP for check-in risk notification emails. Left unset by
+    # default so importing wellness.db doesn't fail for every other use of
+    # this app just because mail isn't configured yet — the notification
+    # service falls back to writing a suppressed outbox row instead of
+    # sending when smtp_host is empty.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_use_tls: bool = True
+
     def sqlalchemy_database_url(self) -> str:
         if self.database_url:
             return self.database_url

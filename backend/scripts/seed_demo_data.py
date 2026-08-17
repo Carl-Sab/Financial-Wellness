@@ -35,10 +35,12 @@ from wellness.models import (
     Transaction,
     User,
     UserGoal,
+    UserNormalizationSnapshot,
 )
 from wellness.models.enums import TransactionDirection, ValenceLevel
+from wellness.models.normalization_snapshots import POPULATION_NORMALIZATION_DEFAULTS
 from wellness.security import hash_password
-from wellness.services.analysis import get_mood_spending_analysis
+from wellness.services.analysis import get_statistics
 from wellness.services.questionnaire_scoring import (
     BLOCK_E_NORM,
     raw_responses_with_polarity,
@@ -279,6 +281,9 @@ async def _wipe_user_data(session: AsyncSession, user_id: uuid.UUID) -> None:
     await session.execute(
         delete(QuestionnaireResponse).where(QuestionnaireResponse.user_id == user_id)
     )
+    await session.execute(
+        delete(UserNormalizationSnapshot).where(UserNormalizationSnapshot.user_id == user_id)
+    )
     await session.execute(delete(User).where(User.id == user_id))
     await session.commit()
 
@@ -297,6 +302,15 @@ async def _seed(session: AsyncSession, email: str, days: int) -> None:
         currency="LBP",
     )
     session.add(account)
+    # Required by the prediction pipeline (services/prediction.py); the
+    # real /auth/register endpoint creates this at signup, but this script
+    # builds the user row directly and must do the same.
+    session.add(
+        UserNormalizationSnapshot(
+            user_id=user.id,
+            **POPULATION_NORMALIZATION_DEFAULTS,
+        )
+    )
     await session.flush()
 
     session.add(
@@ -450,19 +464,20 @@ async def _print_summary(
     for table_name, count in row_counts.items():
         print(f"  {table_name:<24} {count}")
 
-    analysis = await get_mood_spending_analysis(
-        session, user.id, start_date, end_date, "month", user.currency
+    stats = await get_statistics(
+        session=session,
+        user_id=user.id,
+        display_currency=user.currency,
+        user_timezone=user.timezone,
+        view="monthly",
+        anchor=end_date,
+        category_view="yearly",
+        category_anchor=end_date,
     )
-    print(f"\nDaily budget: {analysis.daily_budget.amount} ({analysis.daily_budget.source})")
-    print("\nMood-spending breakdown:")
-    for period in analysis.periods:
-        print(f"  {period.period_start} .. {period.period_end}")
-        for bucket in period.buckets:
-            print(
-                f"    {bucket.mood:<12} n={bucket.transaction_count:<4} "
-                f"overspend={bucket.overspend_count:<4} rate={bucket.overspend_rate:.2f} "
-                f"avg={bucket.avg_amount:,.0f} total={bucket.total_amount:,.0f}"
-            )
+    print(f"\nBudget: {stats.budget.monthly_amount} {user.currency}/month")
+    print(f"Category summary ({stats.category_summary.range_start} .. {stats.category_summary.range_end}):")
+    for item in stats.category_summary.categories:
+        print(f"  {item.label:<16} spent={item.spent_amount:,.0f} share={item.share:.2%}")
 
 
 async def run(email: str, days: int, *, clean: bool) -> None:

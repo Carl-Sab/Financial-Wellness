@@ -8,6 +8,7 @@ from wellness.db import get_session
 from wellness.models import Checkin, User
 from wellness.schemas.checkins import CheckinCreate, CheckinRead, CheckinUpdate
 from wellness.schemas.predictions import CheckinPredictionRead
+from wellness.services.notifications import notify_checkin_risk
 from wellness.services.prediction import predict_checkin
 
 router = APIRouter(prefix="/checkins", tags=["checkins"])
@@ -69,7 +70,15 @@ async def create_checkin_prediction(
     if checkin is None or checkin.user_id != current_user.id:
         raise not_found("checkin")
     spending = await build_spending_summary(session, current_user)
-    return await predict_checkin(session, current_user, checkin, spending)
+    prediction = await predict_checkin(session, current_user, checkin, spending)
+    await notify_checkin_risk(
+        session,
+        current_user,
+        checkin.id,
+        prediction.risk_level,
+        prediction.arousal_z,
+    )
+    return prediction
 
 
 @router.patch("/{checkin_id}", response_model=CheckinRead)
