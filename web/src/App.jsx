@@ -5,6 +5,7 @@ import RequireBudget from "./components/RequireBudget";
 import RequireQuestionnaire from "./components/RequireQuestionnaire";
 import Bank from "./pages/Bank";
 import Checkin from "./pages/Checkin";
+import Goals from "./pages/Goals";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -88,6 +89,14 @@ export default function App() {
         element={
           <AppPage>
             <Bank />
+          </AppPage>
+        }
+      />
+      <Route
+        path="/goals"
+        element={
+          <AppPage>
+            <Goals />
           </AppPage>
         }
       />

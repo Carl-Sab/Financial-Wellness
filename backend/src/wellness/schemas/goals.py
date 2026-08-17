@@ -56,3 +56,36 @@ class GoalProgress(BaseModel):
     target_amount: Decimal
     spent_amount: Decimal
     remaining_amount: Decimal
+
+
+class MonthlyGoalProgress(BaseModel):
+    target_amount: Decimal
+    spent_amount: Decimal
+    remaining_amount: Decimal
+    is_over: bool
+    overage_amount: Decimal
+
+
+MonthlySuggestionBasis = Literal["reduce_from_overspend", "tighten_from_underspend"]
+
+
+class MonthlySuggestion(BaseModel):
+    amount: Decimal
+    currency: GoalCurrency
+    basis: MonthlySuggestionBasis
+
+
+MonthlyGoalStatusValue = Literal["active", "needs_setup"]
+
+
+class MonthlyGoalStatus(BaseModel):
+    status: MonthlyGoalStatusValue
+    goal: UserGoalRead | None = None
+    progress: MonthlyGoalProgress | None = None
+    suggestion: MonthlySuggestion | None = None
+
+
+class MonthlyGoalSubmit(BaseModel):
+    target_amount: Decimal | None = Field(default=None, gt=0)
+    currency: GoalCurrency = "LBP"
+    accept_suggestion: bool = False

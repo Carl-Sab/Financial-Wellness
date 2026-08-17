@@ -13,6 +13,10 @@ class SpendingWindow(BaseModel):
     # the active monthly budget.
     target: Decimal | None
     remaining: Decimal | None
+    # True when `target` is last month's monthly_budget carried forward for
+    # display, not a real committed target for the current period — see
+    # _provisional_monthly_goal in api/v1/spending.py.
+    is_provisional: bool = False
 
 
 class SpendingSummary(BaseModel):

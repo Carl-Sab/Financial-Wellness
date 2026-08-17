@@ -1,0 +1,75 @@
+.goals-page .questionnaire__content {
+  max-width: 32rem;
+}
+
+.goals-card {
+  background: var(--color-white);
+  border: 1.5px solid rgba(185, 255, 57, 0.45);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.goals-card__eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.goals-card__amount {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight);
+  margin-bottom: var(--space-4);
+}
+
+.goals-card__detail {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-3);
+}
+
+.goals-card__accept {
+  margin-bottom: var(--space-4);
+}
+
+.goals-card__or {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+}
+
+/* --- Progress bar: overage is a distinct segment, not a clamp --- */
+
+.goal-progress__track {
+  position: relative;
+  display: flex;
+  height: 0.75rem;
+  background: var(--color-mist);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.goal-progress__fill {
+  height: 100%;
+  background: var(--color-lime);
+}
+
+.goal-progress__overage {
+  height: 100%;
+  background: var(--color-error);
+  /* A hairline gap so the two segments read as "on-target" then
+     "over," not one continuous bar. */
+  margin-left: 2px;
+}
+
+.goal-progress__overage-label {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-error);
+}

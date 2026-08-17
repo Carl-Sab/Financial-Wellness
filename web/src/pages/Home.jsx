@@ -42,6 +42,15 @@ function BankMark() {
   );
 }
 
+function GoalsMark() {
+  return (
+    <svg className="card__mark" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="15" />
+      <path d="M20 10 L20 20 L27 24" />
+    </svg>
+  );
+}
+
 async function fetchWeeklyStatistics() {
   const response = await apiFetch(
     "/api/v1/analysis/statistics?view=weekly&category_view=daily"
@@ -53,6 +62,12 @@ async function fetchWeeklyStatistics() {
 async function fetchSpendingSummary() {
   const response = await apiFetch("/api/v1/spending/summary");
   if (!response.ok) throw new Error("Failed to load bank summary");
+  return response.json();
+}
+
+async function fetchMonthlyGoal() {
+  const response = await apiFetch("/api/v1/goals/monthly/current");
+  if (!response.ok) throw new Error("Failed to load monthly goal");
   return response.json();
 }
 
@@ -177,6 +192,63 @@ function SpendingBar({ label, emptyLabel, window, sourceCurrency, displayCurrenc
   );
 }
 
+function GoalsPreview({ status, data, retry, displayCurrency }) {
+  if (status === "loading") {
+    return (
+      <div className="card__skeleton" aria-hidden="true">
+        <span className="skeleton skeleton--line-lg" />
+        <span className="skeleton skeleton--bar" />
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return <CardError onRetry={retry} />;
+  }
+
+  if (data.status === "needs_setup") {
+    return <p className="card__empty">Set your goal for this month</p>;
+  }
+
+  const { progress } = data;
+  const target = Number(progress.target_amount);
+  const spent = Number(progress.spent_amount);
+  const percentage = target > 0 ? (spent / target) * 100 : null;
+  const displayedSpent = convertAmount(spent, data.goal.currency, displayCurrency);
+
+  return (
+    <div className="statistics-preview">
+      <p className="card__stat statistics-preview__headline">
+        <span className="card__stat-value">
+          {percentage == null
+            ? formatMoney(displayedSpent, displayCurrency)
+            : `${Math.round(percentage)}%`}
+        </span>
+        <span className="card__stat-unit">
+          {percentage == null ? "spent this month" : "of monthly goal"}
+        </span>
+      </p>
+      {percentage != null && (
+        <div
+          className="statistics-preview__progress"
+          role="progressbar"
+          aria-label="Monthly goal used"
+          aria-valuenow={Math.min(100, Math.round(percentage))}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className={`statistics-preview__progress-fill ${
+              progress.is_over ? "statistics-preview__progress-fill--over" : ""
+            }`}
+            style={{ width: `${Math.min(100, percentage)}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CurrencyToggle({ value, onChange }) {
   return (
     <div className="bank-preview__currency-toggle" role="radiogroup" aria-label="Display currency">
@@ -255,6 +327,7 @@ export default function Home() {
   const navigate = useNavigate();
   const statistics = useCardData(fetchWeeklyStatistics);
   const bank = useCardData(fetchSpendingSummary);
+  const goal = useCardData(fetchMonthlyGoal);
   const [displayCurrency, setDisplayCurrency] = useDisplayCurrency();
 
   const firstName = user?.full_name?.trim().split(/\s+/)[0] ?? "";
@@ -320,6 +393,15 @@ export default function Home() {
             />
             <Button as="link" to="/bank" variant="dark" className="card__cta">
               View bank
+            </Button>
+          </section>
+
+          <section id="goals-card" className="card">
+            <GoalsMark />
+            <h2 className="card__title">Goals</h2>
+            <GoalsPreview {...goal} displayCurrency={displayCurrency} />
+            <Button as="link" to="/goals" variant="dark" className="card__cta">
+              View goal
             </Button>
           </section>
         </div>
